@@ -6,3 +6,7 @@ dist/
 # Built extension bundle — regenerate with `npm run build:ext`.
 extension/content.js
 public/kickoff-overlay.js
+
+# Release artifact — regenerate with `npm run pack:ext`, attach to a Release.
+kickoff-extension.zip
+dist-extension/

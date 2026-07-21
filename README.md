@@ -22,19 +22,51 @@ screen, it moves, it's mildly in the way. You either put it somewhere (the goal)
 or you finish with it (and watch it come apart). Both are satisfying enough that
 you actually do them, which is the entire design bet.
 
-## Install (development)
+## Try it without installing anything
+
+**[Open the live demo →](https://VIHAAN.github.io/kickoff/demo.html)**
+
+That's the real thing running in a normal web page — capture a thought, kick it
+around, boot it into the goal. Nothing is installed and nothing leaves your
+browser. (Replace the URL above with your Pages URL once it's deployed.)
+
+## Install the Chrome extension
+
+Chrome only allows one-click installs from the Web Store, so until this is
+listed there, installing takes four steps. No Node, npm, or build required.
+
+1. Download **`kickoff-extension.zip`** from the
+   [latest release](../../releases/latest) and unzip it
+2. Open `chrome://extensions`
+3. Turn on **Developer mode** (toggle, top right)
+4. Click **Load unpacked** and select the unzipped folder
+
+Then refresh any open tabs. Press `Ctrl/Cmd + Shift + K` and start typing.
+
+<details>
+<summary>Notes and troubleshooting</summary>
+
+- It runs on ordinary `http(s)` pages only. Chrome blocks all extensions from
+  `chrome://` pages, the New Tab page, and the Web Store — that's Chrome, not a
+  bug here.
+- Chrome shows a "Disable developer mode extensions" warning on startup. That's
+  expected for any unpacked extension and safe to dismiss.
+- Nothing is uploaded. Thoughts live in `chrome.storage.local` on your machine;
+  the extension makes no network requests of any kind.
+- After updating, hit the ↻ icon on the extension's card in `chrome://extensions`,
+  then refresh your tabs.
+
+</details>
+
+## Build from source
 
 ```bash
 npm install
-npm run build:ext
+npm run build:ext     # bundles to extension/content.js
+npm run pack:ext      # …and zips it for distribution
 ```
 
-Then in Chrome:
-
-1. Go to `chrome://extensions`
-2. Turn on **Developer mode** (top right)
-3. **Load unpacked** → select the `extension/` folder
-4. Reload any tab you want it on
+Then Load unpacked the `extension/` folder as above.
 
 ## Use it
 

@@ -9,7 +9,8 @@
     "build:ext": "vite build --config vite.config.ext.js && node -e \"require('fs').copyFileSync('extension/content.js','public/kickoff-overlay.js')\"",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "pack:ext": "npm run build:ext && node scripts/pack-extension.js"
   },
   "devDependencies": {
     "jsdom": "^29.1.1",
