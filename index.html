@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>KICKOFF</title>
+    <style>
+      /* Phase 4 — premium, minimal, product-photography feeling. One hero object
+         (the ball) with real light; a soft warm neutral backdrop; restraint. */
+      :root {
+        --shadow: rgba(60, 45, 30, 0.20);
+        --line: rgba(70, 55, 40, 0.05); /* ultra-faint tonal pitch lines */
+      }
+
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
+      html, body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        /* Soft warm neutral, lit from upper-left, with a faint warm pool toward
+           the goal (right) — stadium warmth without a literal stadium. The mid
+           and outer stops carry a subtle sage/olive undertone (a hint of pitch,
+           never a literal grass scene) — the lit highlight stays near-white. */
+        background:
+          radial-gradient(70% 90% at 100% 50%, rgba(255, 214, 150, 0.10), transparent 55%),
+          radial-gradient(130% 130% at 28% 18%, #f7f4ee 0%, #e8e6d5 62%, #dcdcc0 100%);
+        /* No text selection / callout getting in the way of dragging the ball. */
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: none;
+        cursor: default;
+      }
+
+      /* The stage fills the viewport; the ball is positioned within it. */
+      #stage {
+        position: fixed;
+        inset: 0;
+        overflow: hidden;
+      }
+
+      /* A single, whisper-faint pitch center circle + mark — a debossed tonal
+         detail that says "pitch" without any grass or sports-UI chrome. */
+      #pitch-mark {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: min(42vw, 40vh);
+        height: min(42vw, 40vh);
+        transform: translate(-50%, -50%);
+        border: 1.5px solid var(--line);
+        border-radius: 50%;
+        pointer-events: none;
+      }
+      #pitch-mark::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 7px;
+        height: 7px;
+        transform: translate(-50%, -50%);
+        border-radius: 50%;
+        background: var(--line);
+      }
+
+      /* Goal — deliberately NOT a visible structure during play. The ball is the
+         page's one hero object, so the target is only a faint warm glow (a
+         marker, not a net). The real net appears and billows only at the goal
+         moment, then fades back. JS positions #goal to the scoring geometry. */
+      #goal {
+        position: absolute;
+        pointer-events: none;
+      }
+      /* The idle hint: a soft warm pool at the mouth. Subtle enough to never
+         compete with the ball; just enough to say "aim here". */
+      #goal::before {
+        content: "";
+        position: absolute;
+        inset: -34% -8% -34% -46%;
+        background: radial-gradient(
+          ellipse at 100% 50%,
+          rgba(255, 200, 140, 0.14),
+          rgba(255, 200, 140, 0) 72%
+        );
+        pointer-events: none;
+      }
+      /* The net — hidden in play, revealed at the goal moment (richness is earned
+         here). A soft luminous mesh, not a grey debug grid. */
+      #net {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        transition: opacity 340ms ease;
+        border-radius: 0 12px 12px 0;
+        border: 1.5px solid rgba(255, 255, 255, 0.7);
+        border-left: none;
+        background:
+          repeating-linear-gradient(90deg, transparent 0 13px, rgba(255,255,255,0.45) 13px 14px),
+          repeating-linear-gradient(0deg, transparent 0 13px, rgba(255,255,255,0.45) 13px 14px);
+        box-shadow: 0 0 34px rgba(255, 216, 160, 0.55), inset 0 0 20px rgba(255,236,205,0.4);
+        transform-origin: right center;
+        will-change: transform, opacity;
+      }
+      #net.is-goal { opacity: 1; } /* revealed during the celebration */
+
+      /* Net billow on a goal — a quick ripple that settles. */
+      #net.is-billow { animation: billow 700ms cubic-bezier(0.22, 1, 0.36, 1); }
+      @keyframes billow {
+        0% { transform: scaleX(1); }
+        22% { transform: scaleX(1.32) scaleY(1.05); }
+        55% { transform: scaleX(0.94) scaleY(0.98); }
+        100% { transform: scaleX(1); }
+      }
+
+      /* Confetti canvas + warm flash overlay — above everything, non-interactive. */
+      #fx {
+        position: fixed;
+        inset: 0;
+        z-index: 30;
+        pointer-events: none;
+      }
+      #flash {
+        position: fixed;
+        inset: 0;
+        z-index: 20;
+        pointer-events: none;
+        opacity: 0;
+        background: radial-gradient(
+          120% 90% at 85% 50%,
+          rgba(255, 214, 140, 0.55),
+          rgba(255, 224, 170, 0.12) 45%,
+          transparent 70%
+        );
+      }
+      #flash.is-flash { animation: flash 1500ms ease-out; }
+      @keyframes flash {
+        0% { opacity: 0; }
+        12% { opacity: 1; }
+        100% { opacity: 0; }
+      }
+
+      /* ── Liquid Glass UI chrome ──────────────────────────────────────────
+         Frosted, floating capsules that refract the court behind them. The
+         OUTER .reactive carries the tackle transform (JS, every frame); the
+         INNER .glass carries the hover/press morph + a pointer-tracked specular,
+         so the two never fight over `transform`. Text sits on a concentric
+         semi-solid .core plate — never on raw glass. Essentially monochrome. */
+      #nav {
+        position: absolute;
+        top: 34px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 14px;
+      }
+      /* The outer element is now just a transparent carrier for the tackle. */
+      .reactive {
+        display: inline-flex;
+        padding: 0;
+        border: none;
+        background: none;
+        -webkit-appearance: none;
+        appearance: none;
+        /* Purely a reactive prop: clicks pass through to kick the ball. */
+        pointer-events: none;
+        will-change: transform;
+      }
+      #cta-wrap {
+        position: absolute;
+        left: 50%;
+        top: 66%;
+        transform: translateX(-50%);
+      }
+
+      /* The frosted capsule. */
+      .glass {
+        position: relative;
+        display: inline-flex;
+        /* A visible frosted rim of glass around the text plate — this is where
+           the blurred backdrop shows through and reads as glass. */
+        padding: 7px 8px;
+        border-radius: 22px;
+        /* Very translucent, near-neutral tint so the blur genuinely refracts. */
+        background: rgba(250, 250, 252, 0.10);
+        -webkit-backdrop-filter: blur(20px) saturate(1.9) brightness(1.03) contrast(1.04);
+        backdrop-filter: blur(20px) saturate(1.9) brightness(1.03) contrast(1.04);
+        border: 1px solid rgba(255, 255, 255, 0.7); /* bright glass rim */
+        box-shadow:
+          0 14px 32px rgba(54, 40, 24, 0.16),   /* floating diffuse shadow */
+          0 4px 9px rgba(54, 40, 24, 0.10),
+          inset 0 1.5px 1px rgba(255, 255, 255, 0.95), /* light on the top edge */
+          inset 0 -12px 22px rgba(255, 255, 255, 0.06),
+          inset 0 -1.5px 1px rgba(110, 98, 80, 0.16); /* glass thickness (bottom) */
+        transform: scale(1);
+        /* Spring-eased morph (overshoot), never a linear color-swap. */
+        transition: transform 420ms cubic-bezier(0.34, 1.56, 0.64, 1),
+                    box-shadow 300ms ease;
+        will-change: transform;
+      }
+      /* Pointer-tracked specular — a bright glint that slides across the frosted
+         rim with the cursor (JS sets --mx/--my/--spec). Normal blend, not screen,
+         so it's actually visible over pale glass. Sits below the text plate. */
+      .glass::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background: radial-gradient(
+          58px 42px at var(--mx, 28%) var(--my, 14%),
+          rgba(255, 255, 255, 0.92),
+          rgba(255, 255, 255, 0) 58%
+        );
+        opacity: var(--spec, 0.4);
+        transition: opacity 220ms ease;
+        pointer-events: none;
+      }
+      /* Concentric semi-solid text plate (radius = 22 − 7 padding = 15). Solid
+         enough to keep text legible (hard rule), translucent enough to feel like
+         it belongs to the glass. */
+      .core {
+        position: relative;
+        z-index: 1; /* above the specular glint so text stays clean */
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 16px;
+        border-radius: 15px;
+        background: rgba(255, 255, 255, 0.55);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.7),
+          inset 0 -1px 1px rgba(120, 110, 95, 0.06);
+        color: #443f39;
+        font: 500 14px/1 system-ui, -apple-system, "Segoe UI", sans-serif;
+        letter-spacing: 0.05em;
+        white-space: nowrap;
+      }
+
+      /* Morph states (driven by JS since the props are pointer-events:none). */
+      .glass.is-hover {
+        transform: scale(1.06);
+        box-shadow:
+          0 16px 34px rgba(54, 40, 24, 0.18),
+          0 5px 12px rgba(54, 40, 24, 0.12),
+          inset 0 1px 1.5px rgba(255, 255, 255, 0.9),
+          inset 0 -10px 18px rgba(255, 255, 255, 0.12);
+      }
+      .glass.is-press { transform: scale(0.93); } /* declared last → wins over hover */
+
+      /* Primary CTA — the SAME glass material as the nav (one system). It reads
+         as primary only through slightly bolder, larger type, not a different
+         material or colour. */
+      .glass-btn--cta .core {
+        padding: 10px 22px;
+        font-weight: 600;
+        letter-spacing: 0.055em;
+      }
+
+      /* ── Graceful degradation ──────────────────────────────────────────── */
+      /* No backdrop-filter support → fall back to a more opaque solid capsule. */
+      @supports not ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))) {
+        .glass { background: rgba(250, 248, 243, 0.92); }
+        .glass-btn--cta .glass { background: rgba(42, 37, 30, 0.92); }
+      }
+      /* Mid-range mobile: lighter blur to protect the 60fps target. */
+      @media (max-width: 640px) {
+        .glass {
+          -webkit-backdrop-filter: blur(9px) saturate(1.4);
+          backdrop-filter: blur(9px) saturate(1.4);
+        }
+      }
+      /* Reduced motion: no morph transitions, no live specular (JS also checks). */
+      @media (prefers-reduced-motion: reduce) {
+        .glass, .glass::before { transition: none; }
+      }
+
+      /* Ambient mute toggle — bottom-left, mirroring where the overlay's own
+         widget sits (bottom-right), well clear of the top-center nav and the
+         mid CTA. Genuinely interactive (pointer-events default auto), unlike
+         the decorative .reactive props. */
+      #mute-btn {
+        position: fixed;
+        left: 22px;
+        bottom: 22px;
+        z-index: 15;
+        display: inline-flex;
+        padding: 0;
+        border: none;
+        background: none;
+        -webkit-appearance: none;
+        appearance: none;
+        cursor: pointer;
+        will-change: transform;
+      }
+      #mute-btn.is-muted .core { opacity: 0.6; }
+
+      /* The mover carries position (translate). Its child carries roll (rotate),
+         so position and spin never fight over the same transform. */
+      #ball {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 72px;
+        height: 72px;
+        margin-left: -36px; /* center the element on its (px,py) point */
+        margin-top: -36px;
+        z-index: 10; /* the ball is the actor — it rolls in front of the props */
+        will-change: transform;
+      }
+
+      /* The ball's SURFACE — rotates with roll. Warm off-white base; the seams
+         (SVG) turn with it so rolling reads. */
+      #ball-body {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        overflow: hidden;
+        background: radial-gradient(circle at 50% 45%, #f6f1e7 0%, #ece4d4 78%, #e4dccb 100%);
+        will-change: transform;
+      }
+      #ball-body .seams {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+
+      /* The LIGHTING — fixed (does not rotate), composited over the surface:
+         a crisp specular hotspot upper-left, a soft lit wash, a warm shadow
+         lower-right, and an ambient-occlusion rim. Makes it read as a lit
+         sphere, photographed rather than iconographic. */
+      #ball-light {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        pointer-events: none;
+        background:
+          radial-gradient(circle at 33% 27%, rgba(255,255,255,0.95) 0 3%, rgba(255,255,255,0.5) 8%, rgba(255,255,255,0) 22%),
+          radial-gradient(circle at 38% 33%, rgba(255,251,242,0.55), rgba(255,251,242,0) 52%),
+          radial-gradient(circle at 71% 77%, rgba(74,54,32,0.44), rgba(74,54,32,0) 58%),
+          radial-gradient(circle at 50% 50%, rgba(0,0,0,0) 60%, rgba(48,35,20,0.34) 100%);
+      }
+
+      /* Grounding shadow — JS modulates its scale/opacity with the ball's speed
+         (a faster ball reads as slightly lifted: smaller, softer shadow). */
+      #ball-shadow {
+        position: absolute;
+        left: 50%;
+        top: 90%;
+        width: 68px;
+        height: 15px;
+        margin-left: -34px;
+        border-radius: 50%;
+        background: radial-gradient(closest-side, var(--shadow), rgba(60,45,30,0) 80%);
+        filter: blur(2px);
+        z-index: -1;
+        will-change: transform, opacity;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="stage">
+      <div id="pitch-mark"></div>
+
+      <!-- Goal — a target zone on the right edge. Scoring is speed-gated in JS
+           so idle roam can't trigger it. -->
+      <div id="goal">
+        <div id="net"></div>
+      </div>
+
+      <!-- Reactive props. Plain grey-box UI for now (real craft is Phase 4);
+           their charm is entirely in how they get tackled by the ball. Not
+           pointer-interactive — clicks pass through to kick the ball. -->
+      <nav id="nav">
+        <button class="reactive glass-btn" type="button" tabindex="-1"><span class="glass"><span class="core">kick about</span></span></button>
+        <button class="reactive glass-btn" type="button" tabindex="-1"><span class="glass"><span class="core">matchday</span></span></button>
+        <button class="reactive glass-btn" type="button" tabindex="-1"><span class="glass"><span class="core">warm-up</span></span></button>
+      </nav>
+      <div id="cta-wrap">
+        <button class="reactive glass-btn glass-btn--cta" id="cta" type="button" tabindex="-1"><span class="glass"><span class="core">onto the pitch</span></span></button>
+      </div>
+
+      <!-- The one functional (non-decorative) chrome element: toggles the
+           ambient crowd murmur. Reuses .glass-btn (hover/press morph is
+           automatic via chrome.js) but NOT .reactive — this is a real control,
+           not a tackle prop, so it stays genuinely clickable. Marked .no-kick
+           so its click doesn't also kick the ball (see main.js onPointerDown). -->
+      <button id="mute-btn" class="glass-btn no-kick" type="button" aria-label="Toggle ambient sound">
+        <span class="glass"><span class="core" id="mute-label">sound</span></span>
+      </button>
+
+      <div id="ball">
+        <div id="ball-shadow"></div>
+        <div id="ball-body">
+          <!-- A couple of restrained seams with spherical curvature — reads as a
+               stitched football, not an abstract swirl. Two latitude bands that
+               bow with the sphere + one bowed meridian; they turn as it rolls. -->
+          <svg class="seams" viewBox="0 0 100 100" fill="none"
+               stroke="rgba(104,90,70,0.30)" stroke-width="2.4" stroke-linecap="round">
+            <path d="M9 45 C 33 37, 67 37, 91 45" />
+            <path d="M13 63 C 37 71, 63 71, 87 63" />
+            <path d="M50 6 C 43 32, 43 68, 50 94" />
+          </svg>
+        </div>
+        <div id="ball-light"></div>
+      </div>
+    </div>
+
+    <!-- Confetti draws here; a warm flash pulses on a goal. Both above the stage. -->
+    <canvas id="fx"></canvas>
+    <div id="flash"></div>
+    <script type="module" src="/src/standalone.js"></script>
+  </body>
+</html>

@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+
+# Built extension bundle — regenerate with `npm run build:ext`.
+extension/content.js
+public/kickoff-overlay.js

@@ -1,0 +1,143 @@
+# KICKOFF — Mental Cache
+
+A Chrome extension that turns a stray thought into a football you can kick.
+
+Type a thought and it becomes a physical sphere that roams your screen, chases
+your cursor, and takes a real kick. Boot it into the goal to keep it. Flick it
+away when you're done and it dissolves into vapour. It's a scratchpad that
+behaves like an object instead of a list.
+
+> _Add a screen recording here — the ball chasing the cursor, a keep, and a
+> dissolve. This project is motion; a still image undersells it badly._
+
+---
+
+## Why it exists
+
+Note apps are where thoughts go to be forgotten. The friction isn't capture —
+it's that a captured thought becomes a grey row in a list you never reopen.
+
+KICKOFF makes the thought a physical presence you have to deal with. It's on
+screen, it moves, it's mildly in the way. You either put it somewhere (the goal)
+or you finish with it (and watch it come apart). Both are satisfying enough that
+you actually do them, which is the entire design bet.
+
+## Install (development)
+
+```bash
+npm install
+npm run build:ext
+```
+
+Then in Chrome:
+
+1. Go to `chrome://extensions`
+2. Turn on **Developer mode** (top right)
+3. **Load unpacked** → select the `extension/` folder
+4. Reload any tab you want it on
+
+## Use it
+
+| Shortcut / action | What happens |
+|---|---|
+| `Ctrl/Cmd + Shift + K` | Open the input pill (pre-fills with any selected text) |
+| `Ctrl/Cmd + Shift + S` | Capture the current page — title and URL, no typing |
+| `Ctrl/Cmd + Shift + G` | Hide the goal, and bring it back |
+| Drag the ball | Kick it — swipe for power and curl, poke to nudge |
+| **Keep** | Boots it into the goal, with a cheer and confetti |
+| **Done** | Flicks it across the screen at speed; it bursts into vapour |
+| Click the goal | Opens the tray of everything you've kept |
+| Click a sphere | Unwraps it into a readable card (Copy · Open · Back out · Delete) |
+| Tray search | Live filter, available from the very first thought |
+| Tray `⋯` | Export all as markdown, or Clear all (with undo) |
+
+Drag the goal to any edge — it always turns to face into the screen. The first
+page you open each day offers a **Daily Kickoff**: up to three parked thoughts,
+brought back for a decision.
+
+## Development
+
+```bash
+npm run dev        # standalone page at localhost:5173
+npm test           # run the suite
+npm run test:watch # watch mode
+npm run build:ext  # bundle the extension (also refreshes the demo copy)
+npm run build      # build the standalone site to dist/
+```
+
+`demo.html` runs the full overlay in an ordinary page with `chrome.storage`
+mocked, which is far faster to iterate on than reloading the extension every
+time. It loads the built bundle, so run `npm run build:ext` first.
+
+## How it's built
+
+Vanilla JS and Vite. No framework, no runtime dependencies — the shipped bundle
+is one self-contained file.
+
+```
+src/main.js              the engine: physics, phases, input, rendering
+src/confetti.js          particle system (celebration + dissolve)
+extension/src/
+  overlay-entry.js       content script — Shadow DOM host, styles, mounting
+  brain-dump.js          input pill, shortcuts, page/selection capture
+  shelf.js               the goal, tray, search, export, Daily Kickoff
+  unwrap.js              sphere ↔ card cross-transition
+  storage.js             chrome.storage.local wrapper
+test/                    vitest, jsdom
+```
+
+**One engine, two surfaces.** `startKickoff({ root, overlay, mentalCache })`
+runs both the standalone page and the extension. All DOM lookups are scoped to
+`root`, so the same code mounts into `document` or into a shadow root without
+knowing which.
+
+**Shadow DOM.** The overlay runs on `<all_urls>`, so isolation has to work both
+ways: the host page's CSS can't reach our ball, and ours can't leak into their
+layout.
+
+**Real physics, not tweens.** The ball is an under-damped spring
+(`ω = 5.6, ζ = 0.34`) with drag, spin and Magnus curl. The same spring drives
+the stored spheres seeking their slots in the tray, which is why the tray feels
+related to the ball rather than like a different app.
+
+**`window.__k`** exposes a synchronous step hook and a monotonic sim clock.
+Background tabs throttle `requestAnimationFrame` to roughly 1.5fps, which makes
+wall-clock verification of a real-time sim useless — the tests drive the
+simulation by hand instead.
+
+## Testing
+
+```bash
+npm test
+```
+
+Covers the store handoff (the moment a thought stops being physics and becomes
+data), the persistence contract, and activation state.
+
+The interesting cases are regressions for two real bugs, both silent data loss:
+
+- **Interrupted store.** Hitting Keep and then dumping another thought inside
+  the ~0.6s store animation destroyed the first one — `activate()` reset the
+  phase and overwrote the text, so the handoff never ran. No error, no trace.
+- **Dropped URL.** `saveThoughts` persisted only `{id, text, createdAt}`, so a
+  page captured with `Ctrl+Shift+S` came back after a reload with its title
+  intact and its link gone.
+
+## Deliberately not built
+
+**`chrome.storage.sync`.** It caps at 8KB per item — roughly 25–40 thoughts —
+and syncing the array as one blob makes every write last-write-wins, so two
+devices editing between syncs silently lose one side's thoughts. A tool for not
+losing your thoughts shouldn't ship that. `storage.js` is a single swappable
+abstraction, so a per-item sync with proper merging can be added later without
+touching anything else.
+
+**Mobile.** Chrome on iOS, iPadOS and Android has no extension runtime at all,
+so this cannot run there. The layout and input are responsive and touch-capable
+anyway (the ball tracks a finger and returns to roam on lift, controls get 44px
+targets), which pays off in narrow and split-screen windows — and would carry
+over if the engine were ever shipped as a standalone web app.
+
+## License
+
+MIT

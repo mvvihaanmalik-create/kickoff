@@ -1,0 +1,19 @@
+{
+  "name": "kickoff",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:ext": "vite build --config vite.config.ext.js && node -e \"require('fs').copyFileSync('extension/content.js','public/kickoff-overlay.js')\"",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "jsdom": "^29.1.1",
+    "vite": "^6.0.7",
+    "vitest": "^4.1.10"
+  }
+}
