@@ -161,9 +161,19 @@ const OVERLAY_DOM = `
     <input id="kc-search" type="text" autocomplete="off" spellcheck="false" placeholder="search thoughts…" />
     <button id="kc-more" type="button" title="More">⋯</button>
     <div id="kc-more-menu">
+      <button id="kc-recap" type="button">Recap</button>
       <button id="kc-export" type="button">Copy all</button>
       <button id="kc-clear" type="button" class="is-danger">Clear all</button>
     </div>
+  </div>
+  <!-- Tag chips — only rendered when thoughts actually carry #tags. -->
+  <div id="kc-tags"></div>
+  <!-- Recap: the state of your cache, on demand. -->
+  <div id="kc-stats">
+    <button id="kc-stats-close" type="button" aria-label="Close recap">×</button>
+    <div id="kc-stats-grid"></div>
+    <div id="kc-stats-oldest"></div>
+    <button id="kc-stats-review" type="button">Review the oldest</button>
   </div>
   <div id="kc-tray-empty"></div>
   <!-- A stored thought, unwrapped in place: full text, its source, and the
@@ -616,6 +626,60 @@ const OVERLAY_CSS = `
   #kc-more-menu button:hover { background:rgba(0,0,0,0.05); }
   #kc-more-menu button.is-danger { color:#8c3b32; }
   #kc-export.is-copied { color:#2f4a33; }
+
+  /* ── Tag chips. Only appear when thoughts actually carry #tags, so the tray
+     stays bare until tagging is something you're really doing. */
+  #kc-tags {
+    position:absolute; left:16px; right:16px; top:54px; z-index:3;
+    display:none; flex-wrap:wrap; gap:6px;
+  }
+  #kc-tags.is-shown { display:flex; }
+  .kc-tag {
+    border:none; cursor:pointer; padding:5px 11px; border-radius:13px;
+    background:rgba(255,255,255,0.66); color:#514a42;
+    font:500 12px system-ui,-apple-system,sans-serif;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.8), 0 1px 3px rgba(54,40,24,0.10);
+    transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+  }
+  .kc-tag:hover { transform:translateY(-1px); }
+  .kc-tag.is-on { background:rgba(58,74,96,0.90); color:#f4f7fb; }
+
+  /* ── Recap. A quiet report on the state of your cache: what's here, what you
+     finished, and — the one that actually drives action — how long the oldest
+     thing has been waiting. */
+  #kc-stats {
+    position:absolute; left:16px; right:16px; top:54px; bottom:16px; z-index:5;
+    display:none; flex-direction:column; gap:12px; padding:18px;
+    border-radius:18px; background:rgba(252,251,249,0.98);
+    box-shadow:0 18px 44px rgba(54,40,24,0.22); border:1px solid rgba(255,255,255,0.8);
+  }
+  #kc-stats.is-open { display:flex; }
+  #kc-stats-close {
+    position:absolute; right:10px; top:8px; border:none; background:none;
+    cursor:pointer; font-size:20px; line-height:1; color:#8a8178; padding:4px 8px;
+  }
+  #kc-stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .kc-stat {
+    padding:12px; border-radius:13px; background:rgba(255,255,255,0.72);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);
+  }
+  .kc-stat b {
+    display:block; font:600 22px/1.1 system-ui,-apple-system,sans-serif; color:#3a352f;
+  }
+  .kc-stat span {
+    display:block; margin-top:3px; color:#7b736a;
+    font:500 11.5px system-ui,-apple-system,sans-serif; letter-spacing:0.02em;
+  }
+  #kc-stats-oldest {
+    padding:12px 13px; border-radius:13px; background:rgba(246,239,228,0.9);
+    color:#5d5348; font:500 12.5px/1.45 system-ui,-apple-system,sans-serif;
+  }
+  #kc-stats-review {
+    margin-top:auto; border:none; cursor:pointer; padding:11px; border-radius:13px;
+    background:rgba(58,74,96,0.92); color:#f4f7fb;
+    font:600 13px system-ui,-apple-system,sans-serif;
+  }
+  #kc-stats-review[disabled] { opacity:0.4; cursor:default; }
 
   /* A stored thought, unwrapped in place. */
   #kc-thought-card {

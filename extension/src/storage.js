@@ -111,6 +111,33 @@ export function saveGoalPos(p) {
   }
 }
 
+// Timestamps of finished thoughts — the only record left after one dissolves,
+// and what makes "finished this week" and the streak real rather than guessed.
+// Capped at 400: enough for months of streaks, small enough to never approach
+// the per-item storage quota.
+const FINISHED_KEY = "kc_finished";
+let memFinished = [];
+
+export function loadFinished() {
+  return new Promise((resolve) => {
+    if (hasChromeStorage()) {
+      try { chrome.storage.local.get(FINISHED_KEY, (r) => resolve((r && r[FINISHED_KEY]) || [])); }
+      catch { resolve([]); }
+    } else {
+      resolve(memFinished.slice());
+    }
+  });
+}
+
+export function saveFinished(list) {
+  const data = list.slice(-400);
+  if (hasChromeStorage()) {
+    try { chrome.storage.local.set({ [FINISHED_KEY]: data }); } catch { /* ignore */ }
+  } else {
+    memFinished = data;
+  }
+}
+
 export function setOnboarded() {
   if (hasChromeStorage()) {
     try { chrome.storage.local.set({ [ONBOARD_KEY]: true }); } catch { /* ignore */ }

@@ -4,6 +4,10 @@ import { defineConfig } from "vite";
 // bundling the shared engine + overlay entry. Output overwrites extension/
 // content.js, which the MV3 manifest loads. manifest.json/src are preserved.
 export default defineConfig({
+  // No public/ copy: outDir is extension/, so Vite would mirror public/ into the
+  // shipped extension — which put a stale duplicate of the bundle next to the
+  // real one and silently regenerated it every build.
+  publicDir: false,
   build: {
     outDir: "extension",
     emptyOutDir: false,

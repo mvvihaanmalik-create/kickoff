@@ -3,6 +3,8 @@
 // a live thought-sphere into being. Input length is capped so canvas-drawn text
 // stays legible when wrapped onto the sphere (§7).
 
+import * as audio from "../../src/audio.js";
+
 const THOUGHT_CAP = 120;
 
 let els = null;
@@ -101,6 +103,7 @@ function summon() {
   if (!els) return;
   api && api.unlockAudio(); // first deliberate gesture unlocks sound
   open = true;
+  audio.tick(1.18); // a high, quiet cue: capture is armed
   els.pill.classList.add("is-open");
   centrePill();
   // Pre-fill with whatever you've selected on the page — highlight, hit the
@@ -128,6 +131,7 @@ function onKey(e) {
     const text = els.input.value.trim();
     if (text) {
       api.activate({ text, id: newId(), x: window.innerWidth / 2, y: window.innerHeight / 2 });
+      audio.pop(); // the thought comes into being
     }
     close();
   } else if (e.key === "Escape") {

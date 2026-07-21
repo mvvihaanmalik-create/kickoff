@@ -229,6 +229,76 @@ export function chime() {
   });
 }
 
+// ── UI cues ──────────────────────────────────────────────────────────────────
+// These fire on ordinary interactions, so they follow different rules from the
+// celebration sounds: very short (under ~90ms), quiet, and pitched high enough
+// to sit above page audio without competing with it. A UI sound you notice on
+// the second hearing is a UI sound you'll mute by the tenth.
+
+// A crisp tick. `pitch` scales the fundamental — 1.0 confirms, lower reverses,
+// which is how undo can be the same gesture read backwards.
+export function tick(pitch = 1) {
+  if (!ctx || muted) return;
+  if (ctx.state === "suspended") ctx.resume();
+  const t = ctx.currentTime;
+  const o = ctx.createOscillator();
+  o.type = "triangle";
+  o.frequency.setValueAtTime(2100 * pitch, t);
+  o.frequency.exponentialRampToValueAtTime(1500 * pitch, t + 0.05);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.075, t + 0.005); // near-instant attack
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
+  // A gentle top-end roll-off so the tick reads as "wooden", not "beep".
+  const lp = ctx.createBiquadFilter();
+  lp.type = "lowpass";
+  lp.frequency.value = 5200;
+  o.connect(g); g.connect(lp); lp.connect(ctx.destination);
+  o.start(t); o.stop(t + 0.09);
+}
+
+// A soft rounded pop — a thought coming into being. Lower and fuller than tick.
+export function pop() {
+  if (!ctx || muted) return;
+  if (ctx.state === "suspended") ctx.resume();
+  const t = ctx.currentTime;
+  const o = ctx.createOscillator();
+  o.type = "sine";
+  o.frequency.setValueAtTime(420, t);
+  o.frequency.exponentialRampToValueAtTime(760, t + 0.06); // rising = appearing
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.11, t + 0.008);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+  o.connect(g); g.connect(ctx.destination);
+  o.start(t); o.stop(t + 0.18);
+}
+
+// Air moving — panels opening or closing. `dir` 1 opens (rising), -1 closes.
+export function swish(dir = 1) {
+  if (!ctx || muted) return;
+  if (ctx.state === "suspended") ctx.resume();
+  const t = ctx.currentTime;
+  const dur = 0.19;
+  const buf = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * dur), ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  // A bandpass sweep is what turns flat noise into a sense of movement.
+  const bp = ctx.createBiquadFilter();
+  bp.type = "bandpass";
+  bp.Q.value = 1.1;
+  bp.frequency.setValueAtTime(dir > 0 ? 700 : 1800, t);
+  bp.frequency.exponentialRampToValueAtTime(dir > 0 ? 1900 : 650, t + dur);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.055, t + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(bp); bp.connect(g); g.connect(ctx.destination);
+  src.start(t); src.stop(t + dur);
+}
+
 function whistle(start, freq) {
   const o = ctx.createOscillator();
   o.type = "sine";

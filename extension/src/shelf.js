@@ -5,7 +5,8 @@
 // same overshoot/settle character; a small per-sphere wobble makes them read as
 // "objects resting near each other" without any real collision (§7).
 import { CONFIG, labelFontSize } from "../../src/main.js";
-import { loadThoughts, saveThoughts, usingChromeStorage, isOnboarded, setOnboarded, loadGoalPos, saveGoalPos, loadLastReview, saveLastReview } from "./storage.js";
+import * as audio from "../../src/audio.js";
+import { loadThoughts, saveThoughts, usingChromeStorage, isOnboarded, setOnboarded, loadGoalPos, saveGoalPos, loadLastReview, saveLastReview, loadFinished, saveFinished } from "./storage.js";
 
 let api = null;
 let shadow = null;
@@ -15,6 +16,7 @@ let open = false;
 let spheres = []; // active render objects while the tray is open
 let lastW = 0, lastH = 0;
 let query = ""; // live search filter (available from the very first thought)
+let finishedLog = []; // timestamps of dissolved thoughts — powers streak + weekly count
 
 const SPRING = () => ({
   k: CONFIG.chaseOmega * CONFIG.chaseOmega,
@@ -51,8 +53,25 @@ export function initShelf(root, engineApi) {
     kickoffText: root.querySelector("#kc-kickoff-text"),
     kickoffGo: root.querySelector("#kc-kickoff-go"),
     kickoffSkip: root.querySelector("#kc-kickoff-skip"),
+    tags: root.querySelector("#kc-tags"),
+    recapBtn: root.querySelector("#kc-recap"),
+    stats: root.querySelector("#kc-stats"),
+    statsGrid: root.querySelector("#kc-stats-grid"),
+    statsOldest: root.querySelector("#kc-stats-oldest"),
+    statsReview: root.querySelector("#kc-stats-review"),
+    statsClose: root.querySelector("#kc-stats-close"),
   };
   if (!els.dish) return;
+
+  // Recap — reachable on demand, which the automatic daily prompt never was.
+  els.recapBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    els.menu.classList.remove("is-open");
+    api.unlockAudio();
+    openStats();
+  });
+  els.statsClose.addEventListener("click", (e) => { e.stopPropagation(); audio.tick(0.8); closeStats(); });
+  els.statsReview.addEventListener("click", (e) => { e.stopPropagation(); startRecapReview(); });
 
   els.kickoffGo.addEventListener("click", (e) => { e.stopPropagation(); api.unlockAudio(); startKickoffReview(); });
   els.kickoffSkip.addEventListener("click", (e) => { e.stopPropagation(); dismissKickoff(); });
@@ -117,14 +136,18 @@ export function initShelf(root, engineApi) {
       e.stopPropagation();
       const md = thoughts.map((t) => `- ${t.text}${t.url ? ` — ${t.url}` : ""}`).join("\n");
       try { await navigator.clipboard.writeText(md); } catch { /* clipboard blocked */ }
+      audio.tick();
       els.exportBtn.classList.add("is-copied");
       setTimeout(() => els.exportBtn.classList.remove("is-copied"), 1400);
     });
   }
 
   api.setStoreHandler(onStore);
-  // A thought dissolved ("Done") also advances the review.
+  // A thought dissolved ("Done") — log the finish for the streak, then advance
+  // the review. This is the only trace a finished thought leaves behind.
   api.setBreakHandler(() => {
+    finishedLog.push(Date.now());
+    saveFinished(finishedLog);
     if (reviewQueue.length) setTimeout(nextReviewThought, 700);
   });
   api.onFrame(update);
@@ -148,9 +171,11 @@ export function initShelf(root, engineApi) {
   loadThoughts().then((saved) => {
     thoughts = saved;
     updateDishCount();
+    renderTags();
     if (saved.length === 0) maybeOnboard();
     else maybeDailyKickoff();
   });
+  loadFinished().then((log) => { finishedLog = log; });
 }
 
 // ── Daily Kickoff ────────────────────────────────────────────────────────────
@@ -160,19 +185,90 @@ let reviewQueue = [];
 
 const todayKey = () => new Date().toISOString().slice(0, 10);
 
+// Thoughts old enough to be worth re-deciding. `sinceMidnight` is the automatic
+// daily rule (only yesterday's thoughts, so the prompt never nags about what you
+// just wrote); passing false takes anything, which is what the manual Recap uses.
+function dueThoughts(sinceMidnight = true) {
+  const now = Date.now();
+  const cutoff = new Date(); cutoff.setHours(0, 0, 0, 0);
+  return thoughts
+    .filter((t) => !t.snoozeUntil || t.snoozeUntil <= now)
+    .filter((t) => !sinceMidnight || (t.createdAt || 0) < cutoff.getTime())
+    .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)); // oldest first
+}
+
 function maybeDailyKickoff() {
   loadLastReview().then((last) => {
     if (last === todayKey()) return;
-    // Anything kept before today and not snoozed into the future is due.
-    const now = Date.now();
-    const cutoff = new Date(); cutoff.setHours(0, 0, 0, 0);
-    const due = thoughts.filter(
-      (t) => (!t.snoozeUntil || t.snoozeUntil <= now) && (t.createdAt || 0) < cutoff.getTime()
-    );
+    const due = dueThoughts(true);
     if (!due.length) return;
     reviewQueue = due.slice(0, 3); // a short, finishable review — never a chore
     showKickoffPrompt(reviewQueue.length);
   });
+}
+
+// ── Recap ────────────────────────────────────────────────────────────────────
+// The automatic Daily Kickoff only fires on a later calendar day, once, on page
+// load — which made it effectively invisible. Recap is the same review, reachable
+// on demand, plus the numbers that give it context.
+const DAY = 86400000;
+
+function statsSnapshot() {
+  const now = Date.now();
+  const weekAgo = now - 7 * DAY;
+  const kept = thoughts.length;
+  const finishedWeek = finishedLog.filter((ts) => ts >= weekAgo).length;
+  const oldest = dueThoughts(false)[0] || null;
+  const oldestDays = oldest ? Math.floor((now - (oldest.createdAt || now)) / DAY) : 0;
+  // Streak: consecutive days back from today on which you finished something.
+  let streak = 0;
+  const days = new Set(finishedLog.map((ts) => new Date(ts).toISOString().slice(0, 10)));
+  for (let i = 0; ; i++) {
+    const key = new Date(now - i * DAY).toISOString().slice(0, 10);
+    if (days.has(key)) streak++;
+    else if (i > 0) break;       // today being empty doesn't end a live streak
+    else if (!days.has(key)) continue;
+  }
+  return { kept, finishedWeek, oldest, oldestDays, streak };
+}
+
+function openStats() {
+  if (!els.stats) return;
+  const s = statsSnapshot();
+  els.statsGrid.textContent = "";
+  const cards = [
+    [s.kept, s.kept === 1 ? "thought kept" : "thoughts kept"],
+    [s.finishedWeek, "finished this week"],
+    [s.streak, s.streak === 1 ? "day streak" : "day streak"],
+    [allTags().length, "tags in use"],
+  ];
+  for (const [n, label] of cards) {
+    const d = document.createElement("div");
+    d.className = "kc-stat";
+    const b = document.createElement("b"); b.textContent = String(n);
+    const sp = document.createElement("span"); sp.textContent = label;
+    d.append(b, sp);
+    els.statsGrid.appendChild(d);
+  }
+  // The line that actually prompts action.
+  els.statsOldest.textContent = s.oldest
+    ? `Oldest: “${(s.oldest.text || "").slice(0, 70)}” — waiting ${s.oldestDays} day${s.oldestDays === 1 ? "" : "s"}.`
+    : "Nothing waiting. Your cache is clear.";
+  els.statsReview.disabled = !s.oldest;
+  els.stats.classList.add("is-open");
+  audio.chime();
+}
+
+function closeStats() { els.stats && els.stats.classList.remove("is-open"); }
+
+// Review from Recap: take the oldest few, regardless of which day they landed.
+function startRecapReview() {
+  closeStats();
+  const due = dueThoughts(false);
+  if (!due.length) return;
+  reviewQueue = due.slice(0, 3);
+  saveLastReview(todayKey());
+  nextReviewThought();
 }
 
 function showKickoffPrompt(n) {
@@ -370,18 +466,69 @@ function onStore(thought) {
   });
   saveThoughts(thoughts);
   updateDishCount();
+  renderTags();
   if (open) refreshSpheres();
   if (reviewQueue.length) setTimeout(nextReviewThought, 700); // continue the review
 }
 
+// ── Tags ─────────────────────────────────────────────────────────────────────
+// Tags are parsed out of the text itself rather than entered separately: typing
+// "#work call the bank" is one motion, and a separate tag field would be one
+// more thing to fill in at exactly the moment you're trying to offload fast.
+const TAG_RE = /#([a-z0-9][a-z0-9_-]{0,23})/gi;
+
+export function parseTags(text) {
+  const out = [];
+  for (const m of String(text || "").matchAll(TAG_RE)) {
+    const tag = m[1].toLowerCase();
+    if (!out.includes(tag)) out.push(tag);
+  }
+  return out;
+}
+
+// Every distinct tag in the cache, most-used first — that ordering keeps the
+// chips you actually reach for from drifting around as the list grows.
+function allTags() {
+  const counts = new Map();
+  for (const t of thoughts) {
+    for (const tag of parseTags(t.text)) counts.set(tag, (counts.get(tag) || 0) + 1);
+  }
+  return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+}
+
+let activeTag = "";
+
+function renderTags() {
+  if (!els.tags) return;
+  const tags = allTags();
+  els.tags.textContent = "";
+  els.tags.classList.toggle("is-shown", tags.length > 0);
+  if (!tags.length) { activeTag = ""; return; }
+  for (const [tag, n] of tags) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "kc-tag" + (activeTag === tag ? " is-on" : "");
+    b.textContent = `#${tag} ${n}`;
+    b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      activeTag = activeTag === tag ? "" : tag; // second click clears the filter
+      audio.tick();
+      renderTags();
+      refreshSpheres();
+    });
+    els.tags.appendChild(b);
+  }
+}
+
 // Thoughts currently on the shelf: snoozed ones stay out of sight until they're
-// due, and the search query filters the rest.
+// due, and the search query + active tag filter the rest.
 function visibleThoughts() {
   const now = Date.now();
   const q = query.trim().toLowerCase();
   return thoughts
     .filter((t) => !t.snoozeUntil || t.snoozeUntil <= now)
-    .filter((t) => !q || (t.text || "").toLowerCase().includes(q));
+    .filter((t) => !q || (t.text || "").toLowerCase().includes(q))
+    .filter((t) => !activeTag || parseTags(t.text).includes(activeTag));
 }
 
 function updateDishCount() {
@@ -405,7 +552,9 @@ function toggle() { open ? close() : openShelf(); }
 
 function openShelf() {
   open = true;
+  audio.swish(1);
   els.tray.classList.add("is-open");
+  renderTags();
   refreshSpheres();
   if (els.search) { els.search.value = query; setTimeout(() => els.search.focus({ preventScroll: true }), 80); }
   // Re-measure slots after layout settles (guards against a 0-size first read).
@@ -415,6 +564,8 @@ function openShelf() {
 
 function close() {
   open = false;
+  audio.swish(-1);
+  closeStats();
   els.tray.classList.remove("is-open");
   spheres.forEach((s) => s.el.remove());
   spheres = [];
@@ -597,6 +748,8 @@ function undoClear() {
   const have = new Set(thoughts.map((t) => t.id));
   thoughts = thoughts.concat(undoBuffer.filter((t) => !have.has(t.id)));
   saveThoughts(thoughts);
+  audio.tick(0.62); // the confirm tick, pitched down — a reversal should sound reversed
+  renderTags();
   undoBuffer = null;
   clearTimeout(undoTimer);
   els.undo.classList.remove("is-open");

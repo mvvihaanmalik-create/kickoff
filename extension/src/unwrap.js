@@ -5,6 +5,8 @@
 // (here). The thought's text is real and consistent across the transition;
 // only the transition's mechanism is approximated.
 
+import * as audio from "../../src/audio.js";
+
 let api = null;
 let shadow = null;
 let card = null;
@@ -49,6 +51,7 @@ function begin() {
   const th = api.activeThought();
   if (!th.visible) return;
   cardText.textContent = th.text || "";
+  audio.swish(1); // the sphere unfolding into something readable
   api.beginRead();
 }
 
