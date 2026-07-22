@@ -90,6 +90,29 @@ export function saveLastReview(day) {
   }
 }
 
+// Where the person dragged the + trigger to — remembered per browser.
+const TRIG_KEY = "kc_trigpos";
+let memTrig = null;
+
+export function loadTrigPos() {
+  return new Promise((resolve) => {
+    if (hasChromeStorage()) {
+      try { chrome.storage.local.get(TRIG_KEY, (r) => resolve((r && r[TRIG_KEY]) || null)); }
+      catch { resolve(null); }
+    } else {
+      resolve(memTrig);
+    }
+  });
+}
+
+export function saveTrigPos(p) {
+  if (hasChromeStorage()) {
+    try { chrome.storage.local.set({ [TRIG_KEY]: p }); } catch { /* ignore */ }
+  } else {
+    memTrig = p;
+  }
+}
+
 // Where the person dragged the goal to — remembered per browser.
 const POS_KEY = "kc_goalpos";
 

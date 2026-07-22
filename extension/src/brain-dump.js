@@ -4,6 +4,8 @@
 // stays legible when wrapped onto the sphere (§7).
 
 import * as audio from "../../src/audio.js";
+import { showGoal, relaxGoal } from "./shelf.js";
+import { loadTrigPos, saveTrigPos } from "./storage.js";
 
 const THOUGHT_CAP = 120;
 
@@ -21,8 +23,15 @@ export function initBrainDump(root, engineApi) {
   if (!els.pill) return;
 
   els.input.maxLength = THOUGHT_CAP;
-  els.trigger.addEventListener("click", () => (open ? close() : summon()));
+  // Drag-aware: a clean click toggles the pill, a drag moves the + itself.
+  els.trigger.addEventListener("pointerdown", onTriggerPress);
   els.input.addEventListener("keydown", onKey);
+
+  // The + is movable like everything else, and remembers where you put it.
+  // Default stays bottom-left (the CSS position) until it's ever dragged.
+  loadTrigPos().then((p) => {
+    if (p && typeof p.x === "number") placeTrigger(p.x, p.y);
+  });
 
   // The pill can be dragged out of the way, but always reopens centred — so it
   // never "hides" somewhere you forgot you left it.
@@ -36,6 +45,43 @@ export function initBrainDump(root, engineApi) {
   // Global shortcut: Cmd/Ctrl+Shift+K. Captured on the document so it works
   // regardless of page focus; we only preventDefault when we actually act.
   document.addEventListener("keydown", onGlobalKey, true);
+}
+
+// The + button: click toggles capture, drag relocates it. Same movement
+// threshold as the goal and the pill, so all three feel like one system.
+function onTriggerPress(e) {
+  const sx = e.clientX, sy = e.clientY;
+  const r = els.trigger.getBoundingClientRect();
+  const offX = sx - r.left, offY = sy - r.top;
+  let moved = false;
+  const move = (ev) => {
+    if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) > 5) moved = true;
+    if (!moved) return;
+    placeTrigger(ev.clientX - offX, ev.clientY - offY);
+  };
+  const up = (ev) => {
+    window.removeEventListener("pointermove", move);
+    window.removeEventListener("pointerup", up);
+    if (moved) {
+      const rr = els.trigger.getBoundingClientRect();
+      saveTrigPos({ x: rr.left, y: rr.top });
+    } else {
+      open ? close() : summon();
+    }
+  };
+  window.addEventListener("pointermove", move, { passive: true });
+  window.addEventListener("pointerup", up, { passive: true });
+}
+
+// Clamp on-screen and switch from the CSS bottom-left default to explicit
+// coordinates the first time it moves.
+function placeTrigger(x, y) {
+  const w = els.trigger.offsetWidth || 44, h = els.trigger.offsetHeight || 40;
+  const cx = Math.max(6, Math.min(window.innerWidth - w - 6, x));
+  const cy = Math.max(6, Math.min(window.innerHeight - h - 6, y));
+  els.trigger.style.left = cx + "px";
+  els.trigger.style.top = cy + "px";
+  els.trigger.style.bottom = "auto";
 }
 
 function onGlobalKey(e) {
@@ -104,6 +150,7 @@ function summon() {
   api && api.unlockAudio(); // first deliberate gesture unlocks sound
   open = true;
   audio.tick(1.18); // a high, quiet cue: capture is armed
+  showGoal(); // the target appears with the input — aim and thought together
   els.pill.classList.add("is-open");
   centrePill();
   // Pre-fill with whatever you've selected on the page — highlight, hit the
@@ -123,6 +170,7 @@ function close() {
   open = false;
   els.pill.classList.remove("is-open");
   els.input.blur();
+  relaxGoal(); // no capture happened → the goal may tuck away again
 }
 
 function onKey(e) {

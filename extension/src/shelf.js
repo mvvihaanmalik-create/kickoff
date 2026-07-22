@@ -266,18 +266,33 @@ function statsSnapshot() {
     else if (i > 0) break;       // today being empty doesn't end a live streak
     else if (!days.has(key)) continue;
   }
-  return { kept, finishedWeek, oldest, oldestDays, streak };
+  // Best run ever, walked over the same day-set in date order.
+  let bestStreak = 0, run = 0, prev = "";
+  for (const d of [...days].sort()) {
+    run = prev && (new Date(d) - new Date(prev)) === DAY ? run + 1 : 1;
+    bestStreak = Math.max(bestStreak, run);
+    prev = d;
+  }
+  return {
+    kept, finishedWeek, finishedAll: finishedLog.length,
+    oldest, oldestDays, streak, bestStreak, tags: allTags().length,
+  };
 }
 
 function openStats() {
   if (!els.stats) return;
   const s = statsSnapshot();
   els.statsGrid.textContent = "";
+  // Match-report framing: the numbers are the same, but "booted into oblivion"
+  // earns a smile where "deleted count" reads like a database column.
+  const streakLabel = s.streak >= 3 ? `day streak 🔥` : `day streak`;
   const cards = [
-    [s.kept, s.kept === 1 ? "thought kept" : "thoughts kept"],
-    [s.finishedWeek, "finished this week"],
-    [s.streak, s.streak === 1 ? "day streak" : "day streak"],
-    [allTags().length, "tags in use"],
+    [s.kept, s.kept === 1 ? "ball in the net" : "balls in the net"],
+    [s.finishedWeek, "booted this week"],
+    [s.finishedAll, "gone for good"],
+    [s.streak, streakLabel],
+    [s.bestStreak, "best run"],
+    [allTags().length, s.tags === 1 ? "tag in play" : "tags in play"],
   ];
   for (const [n, label] of cards) {
     const d = document.createElement("div");
@@ -289,14 +304,24 @@ function openStats() {
   }
   // The line that actually prompts action.
   els.statsOldest.textContent = s.oldest
-    ? `Oldest: “${(s.oldest.text || "").slice(0, 70)}” — waiting ${s.oldestDays} day${s.oldestDays === 1 ? "" : "s"}.`
-    : "Nothing waiting. Your cache is clear.";
+    ? `Longest on the bench: “${(s.oldest.text || "").slice(0, 56)}” — ${s.oldestDays === 0 ? "fresh today" : `${s.oldestDays} day${s.oldestDays === 1 ? "" : "s"} waiting`}.`
+    : "Nothing on the bench. Clean sheet.";
   els.statsReview.disabled = !s.oldest;
+  // The spheres are position:fixed siblings, so they'd float straight over the
+  // panel (and did). Recap owns the tray while it's open.
+  els.slots.style.display = "none";
+  if (els.tags) els.tags.style.display = "none";
   els.stats.classList.add("is-open");
   audio.chime();
 }
 
-function closeStats() { els.stats && els.stats.classList.remove("is-open"); }
+function closeStats() {
+  if (!els.stats) return;
+  els.stats.classList.remove("is-open");
+  els.slots.style.display = "";
+  if (els.tags) els.tags.style.display = "";
+  renderTags();
+}
 
 // Review from Recap: take the oldest few, regardless of which day they landed.
 function startRecapReview() {
@@ -443,6 +468,19 @@ let collapsed = false;
 
 export function toggleCollapse() {
   setCollapsed(!collapsed);
+}
+
+// For the Brain Dump: opening the capture pill also presents the goal, so the
+// target you're about to aim at is on screen before the thought exists.
+export function showGoal() { setCollapsed(false); }
+// …and cancelling the pill lets it tuck away again, unless something needs it.
+export function relaxGoal() {
+  setTimeout(() => {
+    const busy = open || (api.isActive && api.isActive()) ||
+                 (els.stats && els.stats.classList.contains("is-open")) ||
+                 reviewQueue.length > 0;
+    if (!busy) setCollapsed(true);
+  }, 500);
 }
 
 function setCollapsed(v) {

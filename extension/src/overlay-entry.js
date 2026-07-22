@@ -359,19 +359,19 @@ const OVERLAY_CSS = `
     content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
     background:
       repeating-linear-gradient(45deg,
-        transparent 0 5.5px,
-        rgba(58,48,38,0.16) 5.5px 6.4px,
-        rgba(255,255,255,0.62) 6.4px 7.4px,
-        rgba(58,48,38,0.16) 7.4px 8.3px,
-        transparent 8.3px 12px),
+        transparent 0 6px,
+        rgba(58,48,38,0.10) 6px 6.9px,
+        rgba(255,255,255,0.44) 6.9px 7.9px,
+        rgba(58,48,38,0.10) 7.9px 8.8px,
+        transparent 8.8px 13px),
       repeating-linear-gradient(-45deg,
-        transparent 0 5.5px,
-        rgba(58,48,38,0.16) 5.5px 6.4px,
-        rgba(255,255,255,0.62) 6.4px 7.4px,
-        rgba(58,48,38,0.16) 7.4px 8.3px,
-        transparent 8.3px 12px);
-    -webkit-mask-image: radial-gradient(135% 120% at 30% 48%, #000 42%, rgba(0,0,0,0.6) 76%, rgba(0,0,0,0.28) 100%);
-    mask-image: radial-gradient(135% 120% at 30% 48%, #000 42%, rgba(0,0,0,0.6) 76%, rgba(0,0,0,0.28) 100%);
+        transparent 0 6px,
+        rgba(58,48,38,0.10) 6px 6.9px,
+        rgba(255,255,255,0.44) 6.9px 7.9px,
+        rgba(58,48,38,0.10) 7.9px 8.8px,
+        transparent 8.8px 13px);
+    -webkit-mask-image: radial-gradient(140% 124% at 28% 46%, #000 36%, rgba(0,0,0,0.5) 72%, rgba(0,0,0,0.18) 100%);
+    mask-image: radial-gradient(140% 124% at 28% 46%, #000 36%, rgba(0,0,0,0.5) 72%, rgba(0,0,0,0.18) 100%);
   }
   /* A curved specular band riding the front of the membrane, plus depth pooling
      in the back corner — the pair of highlights/shadow that sells "taut and
@@ -486,7 +486,17 @@ const OVERLAY_CSS = `
     transition: opacity 200ms ease, transform 260ms cubic-bezier(0.34,1.56,0.64,1);
   }
   #kc-dump.is-open { opacity:1; transform:translateY(0); pointer-events:auto; }
-  #kc-dump .glass { padding:8px; border-radius:26px; align-items:center; }
+  /* The capture pill gets its own near-opaque plate. The shared 10%-alpha glass
+     is fine for buttons, but the pill sits over ARBITRARY pages — on a dark one
+     it went black and the grip dots vanished. Capture must read everywhere. */
+  #kc-dump .glass {
+    padding:8px; border-radius:26px; align-items:center;
+    background: rgba(251,250,247,0.88);
+    border:1px solid rgba(255,255,255,0.85);
+    box-shadow:
+      0 18px 40px rgba(30,24,18,0.28), 0 4px 10px rgba(30,24,18,0.14),
+      inset 0 1.5px 1px rgba(255,255,255,0.95), inset 0 -1.5px 1px rgba(110,98,80,0.10);
+  }
   /* Grab handle — move the pill without disturbing text selection. */
   #kc-dump-grip {
     flex:none; width:18px; height:30px; margin-left:5px; cursor:grab; touch-action:none;
@@ -507,10 +517,14 @@ const OVERLAY_CSS = `
      "goal" identity (a faint warm glow), understated. ──────────────────────── */
   /* Warm glow pooling at the goal mouth — the "aim here" hint. Brighter when
      the goal is holding thoughts. */
+  /* Contained INSIDE the net's bounds and fully faded before the back edge —
+     the old version overshot the dish on every side, which read as an amber
+     halo leaking out of the goal on dark pages. Tone cooled toward warm-white:
+     saturated amber is exactly what reads as cheap on a dark background. */
   #kc-dish-glow {
-    position:absolute; left:-70px; right:-10px; top:-14%; bottom:-14%;
-    pointer-events:none; border-radius:50%;
-    background: radial-gradient(ellipse at 72% 50%, rgba(255,198,132,0.20), rgba(255,198,132,0) 70%);
+    position:absolute; left:15px; right:0; top:2px; bottom:2px;
+    pointer-events:none; border-radius:0 22px 22px 0;
+    background: radial-gradient(115% 86% at 6% 50%, rgba(255,240,218,0.34), rgba(255,240,218,0.07) 44%, rgba(255,240,218,0) 66%);
     opacity:0.55;
   }
   #kc-dish.has-thoughts #kc-dish-glow { opacity:1; }
@@ -702,37 +716,41 @@ const OVERLAY_CSS = `
   /* ── Recap. A quiet report on the state of your cache: what's here, what you
      finished, and — the one that actually drives action — how long the oldest
      thing has been waiting. */
+  /* The panel must FIT its box: compact cards, and overflow scrolls rather than
+     spilling the Review button past the tray edge (which it did). */
   #kc-stats {
-    position:absolute; left:16px; right:16px; top:54px; bottom:16px; z-index:5;
-    display:none; flex-direction:column; gap:12px; padding:18px;
+    position:absolute; left:14px; right:14px; top:52px; bottom:14px; z-index:5;
+    display:none; flex-direction:column; gap:9px; padding:14px;
+    overflow-y:auto; overscroll-behavior:contain;
     border-radius:18px; background:rgba(252,251,249,0.98);
     box-shadow:0 18px 44px rgba(54,40,24,0.22); border:1px solid rgba(255,255,255,0.8);
   }
   #kc-stats.is-open { display:flex; }
   #kc-stats-close {
-    position:absolute; right:10px; top:8px; border:none; background:none;
-    cursor:pointer; font-size:20px; line-height:1; color:#8a8178; padding:4px 8px;
+    position:absolute; right:8px; top:6px; z-index:1; border:none; background:none;
+    cursor:pointer; font-size:19px; line-height:1; color:#8a8178; padding:4px 8px;
   }
-  #kc-stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  #kc-stats-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:7px; margin-top:6px; }
   .kc-stat {
-    padding:12px; border-radius:13px; background:rgba(255,255,255,0.72);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);
+    padding:8px 10px; border-radius:12px; background:rgba(255,255,255,0.78);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 1px 2px rgba(54,40,24,0.06);
   }
   .kc-stat b {
-    display:block; font:600 22px/1.1 system-ui,-apple-system,sans-serif; color:#3a352f;
+    display:block; font:650 17px/1.1 system-ui,-apple-system,sans-serif; color:#3a352f;
+    font-variant-numeric: tabular-nums;
   }
   .kc-stat span {
-    display:block; margin-top:3px; color:#7b736a;
-    font:500 11.5px system-ui,-apple-system,sans-serif; letter-spacing:0.02em;
+    display:block; margin-top:2px; color:#7b736a;
+    font:500 10.5px/1.25 system-ui,-apple-system,sans-serif; letter-spacing:0.015em;
   }
   #kc-stats-oldest {
-    padding:12px 13px; border-radius:13px; background:rgba(246,239,228,0.9);
-    color:#5d5348; font:500 12.5px/1.45 system-ui,-apple-system,sans-serif;
+    flex:none; padding:9px 11px; border-radius:12px; background:rgba(246,239,228,0.92);
+    color:#5d5348; font:500 11.5px/1.4 system-ui,-apple-system,sans-serif;
   }
   #kc-stats-review {
-    margin-top:auto; border:none; cursor:pointer; padding:11px; border-radius:13px;
+    flex:none; margin-top:auto; border:none; cursor:pointer; padding:10px; border-radius:12px;
     background:rgba(58,74,96,0.92); color:#f4f7fb;
-    font:600 13px system-ui,-apple-system,sans-serif;
+    font:600 12.5px system-ui,-apple-system,sans-serif;
   }
   #kc-stats-review[disabled] { opacity:0.4; cursor:default; }
 
