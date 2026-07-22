@@ -158,10 +158,10 @@ const OVERLAY_DOM = `
 <div id="kc-tray">
   <div id="kc-tray-inner"></div>
   <div id="kc-tray-bar">
-    <input id="kc-search" type="text" autocomplete="off" spellcheck="false" placeholder="search thoughts…" />
+    <input id="kc-search" type="text" autocomplete="off" spellcheck="false" placeholder="search · ↑↓ browse · ⏎ read" />
+    <button id="kc-recap" type="button" title="Your stats — kept, finished, streak">Recap</button>
     <button id="kc-more" type="button" title="More">⋯</button>
     <div id="kc-more-menu">
-      <button id="kc-recap" type="button">Recap</button>
       <button id="kc-export" type="button">Copy all</button>
       <button id="kc-clear" type="button" class="is-danger">Clear all</button>
     </div>
@@ -658,6 +658,14 @@ const OVERLAY_CSS = `
     background:rgba(255,255,255,0.58); color:#4b463f;
     font:600 16px/1 system-ui,-apple-system,sans-serif;
   }
+  /* Recap sits in the open, not inside ⋯ — a feature nobody can find is a
+     feature that doesn't exist. */
+  #kc-recap {
+    flex:none; height:34px; padding:0 13px; border:none; border-radius:17px;
+    cursor:pointer; background:rgba(255,255,255,0.58); color:#4b463f;
+    font:600 12.5px system-ui,-apple-system,sans-serif;
+  }
+  #kc-recap:hover, #kc-more:hover { background:rgba(255,255,255,0.8); }
   #kc-more-menu {
     position:absolute; right:0; top:40px; z-index:4; display:none;
     flex-direction:column; min-width:132px; padding:5px; border-radius:14px;

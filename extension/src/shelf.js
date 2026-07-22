@@ -199,6 +199,11 @@ export function initShelf(root, engineApi) {
     refreshDishPos();
   });
 
+  // The goal starts as a puck — it takes real space only when something needs
+  // it (a live thought, the tray, a review). This was the top complaint about
+  // the always-on goalpost.
+  setCollapsed(true);
+
   // Restore persisted thoughts (survives browser restart via chrome.storage.local).
   loadThoughts().then((saved) => {
     thoughts = saved;
@@ -305,6 +310,7 @@ function startRecapReview() {
 
 function showKickoffPrompt(n) {
   if (!els.kickoff) return;
+  setCollapsed(false); // the prompt is about the goal's contents — show the goal
   els.kickoffText.textContent =
     `${n} thought${n === 1 ? "" : "s"} from before — still worth keeping?`;
   els.kickoff.classList.add("is-open");
@@ -436,10 +442,44 @@ function refreshDishPos() {
 let collapsed = false;
 
 export function toggleCollapse() {
-  collapsed = !collapsed;
+  setCollapsed(!collapsed);
+}
+
+function setCollapsed(v) {
+  if (collapsed === v) return;
+  collapsed = v;
   els.dish.classList.toggle("is-collapsed", collapsed);
   if (collapsed) close(); // a collapsed goal shouldn't leave its shelf hanging open
   updateDishCount();
+}
+
+// ── The goal appears when it's needed, and is a small puck otherwise. ─────────
+// "Needed" is concrete: a live thought exists (you need somewhere to put it),
+// the tray or Recap is open, or a review is prompting. The full goalpost taking
+// permanent screen space was the #1 complaint about it. Manual control always
+// wins: the puck and Ctrl+Shift+G still toggle it, and auto only acts on the
+// TRANSITIONS (thought appears / thought resolved), so it never fights you.
+let wasActive = false;
+let autoHideT = 0;
+
+function updateAutoPresence() {
+  const active = api.isActive && api.isActive();
+  if (active === wasActive) return;
+  wasActive = active;
+  if (active) {
+    clearTimeout(autoHideT);
+    setCollapsed(false); // a thought is live — show it the target
+  } else {
+    // Resolved. Give the store/celebration a beat to finish, then get out of
+    // the way — unless the person is actively browsing the tray or Recap.
+    clearTimeout(autoHideT);
+    autoHideT = setTimeout(() => {
+      const busy = open || (els.stats && els.stats.classList.contains("is-open")) ||
+                   (els.kickoff && els.kickoff.classList.contains("is-open")) ||
+                   reviewQueue.length > 0;
+      if (!busy) setCollapsed(true);
+    }, 1800);
+  }
 }
 
 // NOTE: proximity dimming was removed deliberately. If your cursor moves
@@ -458,7 +498,9 @@ function onGoalPointerDown(e) {
     const up2 = () => {
       window.removeEventListener("pointermove", mv);
       window.removeEventListener("pointerup", up2);
-      if (!moved) toggleCollapse();
+      // Clicking the puck means "show me my thoughts" — expand AND open the
+      // tray in one motion, not expand-then-click-again.
+      if (!moved) { setCollapsed(false); openShelf(); }
     };
     window.addEventListener("pointermove", mv, { passive: true });
     window.addEventListener("pointerup", up2, { passive: true });
@@ -605,6 +647,12 @@ function close() {
   els.tray.classList.remove("is-open");
   spheres.forEach((s) => s.el.remove());
   spheres = [];
+  // Done browsing and nothing live — the goal has no job, so it tucks away.
+  // Re-checked at fire time: retrieving a sphere closes the tray but ACTIVATES
+  // a thought, and that goal must stay up.
+  setTimeout(() => {
+    if (!open && !(api.isActive && api.isActive())) setCollapsed(true);
+  }, 600);
 }
 
 // Keyboard control of the tray. Only active while the tray is open and you're
@@ -727,6 +775,7 @@ function layoutSlots() {
 // Per-frame: spring each sphere toward its slot (same math as cursor-chase) plus
 // an independent idle wobble. Driven by the engine's frame hook so it's in sync.
 function update(dt, now) {
+  if (els) updateAutoPresence();
   if ((els && (window.innerWidth !== lastW || window.innerHeight !== lastH))) {
     lastW = window.innerWidth; lastH = window.innerHeight;
     refreshDishPos();

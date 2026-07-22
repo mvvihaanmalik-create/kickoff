@@ -70,22 +70,29 @@ Then Load unpacked the `extension/` folder as above.
 
 ## Use it
 
+The goal stays out of the way as a small round **puck** showing how many
+thoughts it holds. It expands on its own when a thought is live, and tucks
+itself away again once you've dealt with it.
+
 | Shortcut / action | What happens |
 |---|---|
 | `Ctrl/Cmd + Shift + K` | Open the input pill (pre-fills with any selected text) |
 | `Ctrl/Cmd + Shift + S` | Capture the current page — title and URL, no typing |
-| `Ctrl/Cmd + Shift + G` | Hide the goal, and bring it back |
+| `Ctrl/Cmd + Shift + G` | Show / hide the goal manually |
+| Type `#work buy milk` | Tags parse straight out of the text — chips appear in the tray |
 | Drag the ball | Kick it — swipe for power and curl, poke to nudge |
 | **Keep** | Boots it into the goal, with a cheer and confetti |
 | **Done** | Flicks it across the screen at speed; it bursts into vapour |
-| Click the goal | Opens the tray of everything you've kept |
-| Click a sphere | Unwraps it into a readable card (Copy · Open · Back out · Delete) |
-| Tray search | Live filter, available from the very first thought |
-| Tray `⋯` | Export all as markdown, or Clear all (with undo) |
+| Click the puck | Opens the tray of everything you've kept |
+| `↑↓←→` / `⏎` in the tray | Move between spheres, Enter to read, Backspace to delete |
+| Click a sphere | Unwraps it into a card — the text is **editable in place** |
+| **Later…** on a card | Park it to resurface in 1 / 3 / 7 / 30 days |
+| **Recap** (tray bar) | Stats: kept, finished this week, streak, oldest waiting |
+| Tray `⋯` | Copy all as markdown, or Clear all (with undo) |
 
-Drag the goal to any edge — it always turns to face into the screen. The first
-page you open each day offers a **Daily Kickoff**: up to three parked thoughts,
-brought back for a decision.
+Drag the goal to any edge — it always turns its back to the screen edge. The
+first page you open each day offers a **Daily Kickoff**: up to three parked
+thoughts, brought back for a decision.
 
 ## Development
 
