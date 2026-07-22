@@ -24,11 +24,11 @@ you actually do them, which is the entire design bet.
 
 ## Try it without installing anything
 
-**[Open the live demo →](https://VIHAAN.github.io/kickoff/demo.html)**
+**[Open the live demo →](https://mvvihaanmalik-create.github.io/kickoff/demo.html)**
 
 That's the real thing running in a normal web page — capture a thought, kick it
 around, boot it into the goal. Nothing is installed and nothing leaves your
-browser. (Replace the URL above with your Pages URL once it's deployed.)
+browser.
 
 ## Install the Chrome extension
 
