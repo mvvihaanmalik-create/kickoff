@@ -309,15 +309,21 @@ const OVERLAY_CSS = `
   #kc-dish.is-collapsed .kc-post,
   #kc-dish.is-collapsed .kc-goal-line,
   #kc-dish.is-collapsed::after { opacity:0; pointer-events:none; }
+  /* The puck — the goal's resting form, and now a drag handle for it too.
+     Slightly larger than the old 44px: it's the one persistent piece of UI, so
+     it earns a real presence, and the bigger target makes both finding and
+     dragging easier. Grab cursor advertises that it moves. */
   #kc-dish #kc-puck {
-    position:absolute; right:8px; top:50%; width:44px; height:44px; margin-top:-22px;
+    position:absolute; right:8px; top:50%; width:52px; height:52px; margin-top:-26px;
     border-radius:50%; display:none; align-items:center; justify-content:center;
+    cursor:grab;
     background: rgba(250,250,252,0.16);
     -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4);
     border:1px solid rgba(255,255,255,0.6);
-    box-shadow: 0 8px 20px rgba(54,40,24,0.24), inset 0 2px 2px rgba(255,255,255,0.8);
-    color:#4b463f; font:600 14px/1 system-ui,-apple-system,sans-serif;
+    box-shadow: 0 10px 24px rgba(54,40,24,0.26), inset 0 2px 2px rgba(255,255,255,0.8);
+    color:#4b463f; font:600 16px/1 system-ui,-apple-system,sans-serif;
   }
+  #kc-dish.is-dragging #kc-puck { cursor:grabbing; }
   #kc-dish.is-collapsed #kc-puck { display:flex; }
   #kc-dish.is-collapsed { cursor:pointer; }
   #kc-dish.is-collapsed #kc-dish-count { display:none; }
@@ -486,17 +492,13 @@ const OVERLAY_CSS = `
     transition: opacity 200ms ease, transform 260ms cubic-bezier(0.34,1.56,0.64,1);
   }
   #kc-dump.is-open { opacity:1; transform:translateY(0); pointer-events:auto; }
-  /* The capture pill gets its own near-opaque plate. The shared 10%-alpha glass
-     is fine for buttons, but the pill sits over ARBITRARY pages — on a dark one
-     it went black and the grip dots vanished. Capture must read everywhere. */
-  #kc-dump .glass {
-    padding:8px; border-radius:26px; align-items:center;
-    background: rgba(251,250,247,0.88);
-    border:1px solid rgba(255,255,255,0.85);
-    box-shadow:
-      0 18px 40px rgba(30,24,18,0.28), 0 4px 10px rgba(30,24,18,0.14),
-      inset 0 1.5px 1px rgba(255,255,255,0.95), inset 0 -1.5px 1px rgba(110,98,80,0.10);
-  }
+  /* The capture pill is LIQUID GLASS like everything else — the capsule takes
+     on the page behind it (that adaptation is the material's whole identity;
+     an opaque fill read as a solid white bar). Legibility doesn't depend on the
+     capsule: the input sits on its own semi-solid plate, and the grip dots get
+     a light halo so they survive dark pages. */
+  #kc-dump .glass { padding:8px; border-radius:26px; align-items:center; }
+  #kc-dump-grip { filter: drop-shadow(0 0 2px rgba(255,255,255,0.55)); }
   /* Grab handle — move the pill without disturbing text selection. */
   #kc-dump-grip {
     flex:none; width:18px; height:30px; margin-left:5px; cursor:grab; touch-action:none;

@@ -528,17 +528,29 @@ function updateAutoPresence() {
 // Drag the goal; a press without movement is still a click (opens the shelf).
 function onGoalPointerDown(e) {
   if (collapsed) {
-    // While collapsed, a click just brings it back rather than opening the shelf.
+    // The puck is movable like everything else — it drags the goal's anchor,
+    // so wherever you park the ball icon is where the goal expands. A press
+    // without movement is still a click: expand AND open the tray in one motion.
     e.stopPropagation();
     const sx = e.clientX, sy = e.clientY;
+    const c = goalPos || refreshDishPos();
+    const offX = e.clientX - c.x, offY = e.clientY - c.y;
     let moved = false;
-    const mv = (ev) => { if (Math.hypot(ev.clientX - sx, ev.clientY - sy) > 4) moved = true; };
+    const mv = (ev) => {
+      if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) > 5) {
+        moved = true;
+        els.dish.classList.add("is-dragging");
+      }
+      if (!moved) return;
+      goalPos = { x: ev.clientX - offX, y: ev.clientY - offY };
+      refreshDishPos();
+    };
     const up2 = () => {
       window.removeEventListener("pointermove", mv);
       window.removeEventListener("pointerup", up2);
-      // Clicking the puck means "show me my thoughts" — expand AND open the
-      // tray in one motion, not expand-then-click-again.
-      if (!moved) { setCollapsed(false); openShelf(); }
+      els.dish.classList.remove("is-dragging");
+      if (moved) saveGoalPos(goalPos);
+      else { setCollapsed(false); openShelf(); }
     };
     window.addEventListener("pointermove", mv, { passive: true });
     window.addEventListener("pointerup", up2, { passive: true });
