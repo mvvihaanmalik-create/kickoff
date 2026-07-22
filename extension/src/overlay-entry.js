@@ -506,14 +506,21 @@ const OVERLAY_CSS = `
     background-size:6px 7px; background-position:center; border-radius:6px;
   }
   #kc-dump-grip:active { cursor:grabbing; }
-  /* The input sits on its own semi-solid plate — text never on raw glass. */
+  /* The input uses the SAME plate material as the buttons' .core (0.55 white
+     over the blurred capsule) — at 0.62 it was the one solid-white element in a
+     glass system, and since it spans nearly the whole capsule, it made the
+     entire pill read as opaque. The capsule's backdrop blur underneath is what
+     keeps text legible on busy pages; a heavier fill was never needed. */
   #kc-dump-input {
     width:min(62vw,440px); border:none; outline:none;
-    padding:13px 20px; border-radius:19px; background: rgba(255,255,255,0.62);
-    color:#332f2a; font:500 16px/1.2 system-ui,-apple-system,"Segoe UI",sans-serif;
+    padding:13px 20px; border-radius:19px; background: rgba(255,255,255,0.55);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), inset 0 -1px 1px rgba(120,110,95,0.06);
+    color:#2c2823; font:500 16px/1.2 system-ui,-apple-system,"Segoe UI",sans-serif;
     letter-spacing:0.01em;
   }
-  #kc-dump-input::placeholder { color:rgba(70,63,55,0.5); }
+  /* A touch darker than before: the plate under it is more translucent now,
+     and the placeholder is the only text the pill ever shows at rest. */
+  #kc-dump-input::placeholder { color:rgba(58,52,45,0.66); }
 
   /* ── The Dish (bottom-right) — store target + shelf handle, with a light
      "goal" identity (a faint warm glow), understated. ──────────────────────── */
