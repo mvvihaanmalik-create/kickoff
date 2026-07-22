@@ -32,15 +32,17 @@ export function loadThoughts() {
 }
 
 export function saveThoughts(thoughts) {
-  // `url` must survive the round-trip: a thought captured from a page with
-  // Ctrl+Shift+S is mostly worthless without its link, and dropping it here
-  // meant the title came back after a reload but the card's Open button had
-  // nothing to open — a silent partial data loss.
+  // This is the persistence contract — every field a thought carries must be
+  // listed here, or it silently vanishes on reload while looking fine in memory.
+  // `url` (a captured page's link) and `snoozeUntil` (a "resurface later"
+  // schedule) were both lost this way; the tests in test/storage.test.js exist
+  // to catch the next field that gets added to a thought but forgotten here.
   const data = thoughts.map((t) => ({
     id: t.id,
     text: t.text,
     url: t.url || "",
     createdAt: t.createdAt || Date.now(),
+    snoozeUntil: t.snoozeUntil || 0,
   }));
   if (hasChromeStorage()) {
     try { chrome.storage.local.set({ [KEY]: data }); } catch { /* ignore */ }

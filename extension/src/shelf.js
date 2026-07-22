@@ -17,6 +17,7 @@ let spheres = []; // active render objects while the tray is open
 let lastW = 0, lastH = 0;
 let query = ""; // live search filter (available from the very first thought)
 let finishedLog = []; // timestamps of dissolved thoughts — powers streak + weekly count
+let selIndex = -1; // keyboard-selected sphere; -1 = nothing selected (mouse mode)
 
 const SPRING = () => ({
   k: CONFIG.chaseOmega * CONFIG.chaseOmega,
@@ -46,6 +47,9 @@ export function initShelf(root, engineApi) {
     tcOpen: root.querySelector("#kc-tc-open"),
     tcOut: root.querySelector("#kc-tc-out"),
     tcDel: root.querySelector("#kc-tc-del"),
+    tcLater: root.querySelector("#kc-tc-later"),
+    tcLaterMenu: root.querySelector("#kc-tc-later-menu"),
+    tcResurface: root.querySelector("#kc-tc-resurface"),
     undo: root.querySelector("#kc-undo"),
     undoText: root.querySelector("#kc-undo-text"),
     undoBtn: root.querySelector("#kc-undo-btn"),
@@ -112,10 +116,35 @@ export function initShelf(root, engineApi) {
     updateEmptyState();
     offerUndo(`Deleted “${(removed.text || "").slice(0, 24)}”`, [removed]);
   });
+
+  // Edit in place. A typo used to mean delete-and-retype; now the card's text is
+  // directly editable. Persist on blur or Enter — not on every keystroke, which
+  // would thrash storage and re-render the tags mid-word.
+  els.tcText.addEventListener("keydown", (e) => {
+    e.stopPropagation(); // typing must never reach the page or the shortcuts
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); els.tcText.blur(); }
+    if (e.key === "Escape") { els.tcText.textContent = cardThought ? cardThought.text : ""; els.tcText.blur(); }
+  });
+  els.tcText.addEventListener("blur", () => commitEdit());
+
+  // "Later" — park the thought and schedule it to resurface. Distinct from Keep
+  // (which just stores it) because the return date is the whole point.
+  els.tcLater.addEventListener("click", (e) => {
+    e.stopPropagation();
+    els.tcLaterMenu.classList.toggle("is-open");
+  });
+  els.tcLaterMenu.querySelectorAll("button").forEach((b) => {
+    b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      resurfaceIn(+b.dataset.days);
+    });
+  });
+
   // Clicking empty tray space closes the card / menu.
   els.tray.addEventListener("pointerdown", (ev) => {
     if (!els.card.contains(ev.target)) closeThoughtCard();
     if (!els.menu.contains(ev.target) && ev.target !== els.more) els.menu.classList.remove("is-open");
+    if (!els.tcLaterMenu.contains(ev.target) && ev.target !== els.tcLater) els.tcLaterMenu.classList.remove("is-open");
   });
 
   // Search — live filter, available from the very first thought.
@@ -160,6 +189,9 @@ export function initShelf(root, engineApi) {
       toggleCollapse();
     }
   }, true);
+  // Keyboard navigation of the open tray — a capture tool people reach by
+  // shortcut shouldn't force a switch to the mouse to act on what they stored.
+  document.addEventListener("keydown", onTrayKey, true);
 
   // Restore where the goal was dragged to (falls back to its CSS default).
   loadGoalPos().then((p) => {
@@ -546,6 +578,9 @@ function refreshSpheres() {
   const start = refreshDishPos();
   visibleThoughts().forEach((t) => addSphere(t, start));
   layoutSlots();
+  // Indices just changed under us; re-apply the ring or drop it if out of range.
+  if (selIndex >= spheres.length) selIndex = spheres.length - 1;
+  if (selIndex >= 0) spheres[selIndex].el.classList.add("is-selected");
 }
 
 function toggle() { open ? close() : openShelf(); }
@@ -566,9 +601,71 @@ function close() {
   open = false;
   audio.swish(-1);
   closeStats();
+  clearSelection();
   els.tray.classList.remove("is-open");
   spheres.forEach((s) => s.el.remove());
   spheres = [];
+}
+
+// Keyboard control of the tray. Only active while the tray is open and you're
+// not typing into the search box or editing a card — those own their own keys.
+// Grid-aware: Up/Down move by a row so navigation matches what you see.
+function onTrayKey(e) {
+  if (!open) return;
+  const ae = shadow.activeElement;
+  if (ae === els.search || ae === els.tcText) return; // typing takes precedence
+  if (els.card.classList.contains("is-open")) return; // card has focus of its own
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const n = spheres.length;
+  if (!n) return;
+  const cols = trayCols();
+  let handled = true;
+  switch (e.key) {
+    case "ArrowRight": selectSphere(selIndex < 0 ? 0 : Math.min(n - 1, selIndex + 1)); break;
+    case "ArrowLeft":  selectSphere(selIndex < 0 ? 0 : Math.max(0, selIndex - 1)); break;
+    case "ArrowDown":  selectSphere(selIndex < 0 ? 0 : Math.min(n - 1, selIndex + cols)); break;
+    case "ArrowUp":    selectSphere(selIndex < 0 ? 0 : Math.max(0, selIndex - cols)); break;
+    case "Home":       selectSphere(0); break;
+    case "End":        selectSphere(n - 1); break;
+    case "Enter":      if (selIndex >= 0) openThoughtCard(spheres[selIndex].thought); break;
+    case "Backspace":
+    case "Delete":     if (selIndex >= 0) deleteSelected(); break;
+    default: handled = false;
+  }
+  if (handled) { e.preventDefault(); e.stopPropagation(); }
+}
+
+// Columns actually used in the current layout, so Up/Down move a real row.
+function trayCols() {
+  const tr = trayRestRect();
+  return Math.max(1, Math.floor((tr.width - 60) / 78)); // matches layoutSlots' cell math
+}
+
+function selectSphere(i) {
+  selIndex = i;
+  spheres.forEach((s, k) => s.el.classList.toggle("is-selected", k === i));
+  if (spheres[i]) audio.tick(1.3);
+}
+
+function clearSelection() {
+  selIndex = -1;
+  spheres.forEach((s) => s.el.classList.remove("is-selected"));
+}
+
+function deleteSelected() {
+  const sphere = spheres[selIndex];
+  if (!sphere) return;
+  const removed = sphere.thought;
+  thoughts = thoughts.filter((t) => t.id !== removed.id);
+  saveThoughts(thoughts);
+  updateDishCount();
+  renderTags();
+  refreshSpheres();
+  updateEmptyState();
+  // Keep a selection where the deleted one was, so you can clear a run of them.
+  selIndex = Math.min(selIndex, spheres.length - 1);
+  if (selIndex >= 0) selectSphere(selIndex);
+  offerUndo(`Deleted “${(removed.text || "").slice(0, 24)}”`, [removed]);
 }
 
 function addSphere(thought, start) {
@@ -701,16 +798,61 @@ let cardThought = null;
 function openThoughtCard(thought) {
   cardThought = thought;
   els.tcText.textContent = thought.text || "";
+  els.tcText.classList.remove("is-saved");
   const hasUrl = !!thought.url;
   els.tcLink.textContent = hasUrl ? thought.url : "";
   els.tcLink.href = hasUrl ? thought.url : "#";
   els.tcLink.classList.toggle("is-shown", hasUrl);
   els.tcOpen.classList.toggle("is-shown", hasUrl);
+  els.tcLaterMenu.classList.remove("is-open");
+  renderResurfaceLine(thought);
   els.card.classList.add("is-open");
 }
 
+// Save an edit. Guards the two cases that would otherwise corrupt data: an empty
+// edit (which would leave a blank sphere) reverts, and re-tagging is re-run so
+// editing "buy milk" to "#home buy milk" updates the chips.
+function commitEdit() {
+  if (!cardThought) return;
+  const next = (els.tcText.textContent || "").trim().slice(0, 120);
+  if (!next) { els.tcText.textContent = cardThought.text || ""; return; }
+  if (next === cardThought.text) return;
+  cardThought.text = next;
+  saveThoughts(thoughts);
+  renderTags();
+  if (open) refreshSpheres();          // the sphere's face reflects the new text
+  audio.tick();
+  els.tcText.classList.add("is-saved");
+  setTimeout(() => els.tcText.classList.remove("is-saved"), 900);
+}
+
+// Park a thought to come back in N days. Snoozed thoughts are hidden from the
+// tray and the count until due (visibleThoughts already enforces this), and
+// dueThoughts brings them into Recap once the time passes.
+function resurfaceIn(days) {
+  if (!cardThought) return;
+  cardThought.snoozeUntil = Date.now() + days * 86400000;
+  saveThoughts(thoughts);
+  els.tcLaterMenu.classList.remove("is-open");
+  audio.swish(-1); // it slips away, to return later
+  updateDishCount();
+  closeThoughtCard();
+  if (open) refreshSpheres();
+}
+
+function renderResurfaceLine(thought) {
+  const due = thought.snoozeUntil && thought.snoozeUntil > Date.now();
+  els.tcResurface.classList.toggle("is-shown", !!due);
+  if (due) {
+    const days = Math.max(1, Math.ceil((thought.snoozeUntil - Date.now()) / 86400000));
+    els.tcResurface.textContent = `Resurfaces in ${days} day${days === 1 ? "" : "s"}.`;
+  }
+}
+
 function closeThoughtCard() {
+  if (cardThought) commitEdit(); // don't lose an edit left unblurred
   cardThought = null;
+  els.tcLaterMenu.classList.remove("is-open");
   els.card.classList.remove("is-open");
 }
 

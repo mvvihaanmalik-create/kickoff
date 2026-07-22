@@ -53,6 +53,21 @@ describe("saveThoughts / loadThoughts", () => {
     expect(back[0].url).toBe("");
   });
 
+  it("preserves a resurface schedule (snoozeUntil)", async () => {
+    const when = Date.now() + 7 * 86400000;
+    storage.saveThoughts([{ id: "a6", text: "call back next week", snoozeUntil: when }]);
+    const back = await storage.loadThoughts();
+    // Without this, "Later → in a week" appears to work (the sphere hides) but
+    // the schedule is gone after a reload, so the thought never comes back.
+    expect(back[0].snoozeUntil).toBe(when);
+  });
+
+  it("defaults a missing snoozeUntil to 0", async () => {
+    storage.saveThoughts([{ id: "a7", text: "not parked" }]);
+    const back = await storage.loadThoughts();
+    expect(back[0].snoozeUntil).toBe(0);
+  });
+
   it("stamps createdAt when absent and keeps it when given", async () => {
     storage.saveThoughts([{ id: "a4", text: "x" }, { id: "a5", text: "y", createdAt: 123 }]);
     const back = await storage.loadThoughts();

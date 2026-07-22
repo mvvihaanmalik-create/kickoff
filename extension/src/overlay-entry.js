@@ -179,13 +179,21 @@ const OVERLAY_DOM = `
   <!-- A stored thought, unwrapped in place: full text, its source, and the
        actions that belong to that one thought. -->
   <div id="kc-thought-card">
-    <div id="kc-tc-text"></div>
+    <div id="kc-tc-text" contenteditable="true" spellcheck="false" role="textbox" aria-label="Edit thought"></div>
     <a id="kc-tc-link" target="_blank" rel="noopener noreferrer"></a>
+    <div id="kc-tc-resurface"></div>
     <div id="kc-tc-actions">
       <button id="kc-tc-copy" type="button">Copy</button>
       <button id="kc-tc-open" type="button">Open</button>
+      <button id="kc-tc-later" type="button">Later…</button>
       <button id="kc-tc-out" type="button">Take it out</button>
       <button id="kc-tc-del" type="button" class="is-danger">Delete</button>
+    </div>
+    <div id="kc-tc-later-menu">
+      <button type="button" data-days="1">Tomorrow</button>
+      <button type="button" data-days="3">In 3 days</button>
+      <button type="button" data-days="7">In a week</button>
+      <button type="button" data-days="30">In a month</button>
     </div>
   </div>
 </div>
@@ -522,6 +530,13 @@ const OVERLAY_CSS = `
     background: radial-gradient(circle at 50% 45%, #f6f1e7 0%, #ece4d4 78%, #e4dccb 100%);
     box-shadow: 0 5px 12px rgba(0,0,0,0.22), 0 0 4px rgba(255,255,255,0.5),
       inset 0 -6px 10px rgba(74,54,32,0.18), inset 0 3px 4px rgba(255,255,255,0.6);
+    transition: box-shadow 140ms ease;
+  }
+  /* Keyboard selection — a ring, so it reads without competing with the ball's
+     own material. Only present when the tray is driven by the keyboard. */
+  .kc-sphere.is-selected {
+    box-shadow: 0 6px 16px rgba(0,0,0,0.26), 0 0 0 3px rgba(58,74,96,0.85),
+      inset 0 -6px 10px rgba(74,54,32,0.18), inset 0 3px 4px rgba(255,255,255,0.6);
   }
   .kc-sphere-face {
     position:absolute; left:3px; right:3px; top:27%; bottom:27%;
@@ -684,6 +699,7 @@ const OVERLAY_CSS = `
   /* A stored thought, unwrapped in place. */
   #kc-thought-card {
     position:absolute; left:16px; right:16px; bottom:16px; z-index:5; display:none;
+    /* anchors #kc-tc-later-menu */
     flex-direction:column; gap:9px; padding:15px 16px; border-radius:18px;
     background:rgba(252,251,249,0.97); border:1px solid rgba(255,255,255,0.75);
     box-shadow:0 18px 42px rgba(54,40,24,0.26);
@@ -692,7 +708,17 @@ const OVERLAY_CSS = `
   #kc-tc-text {
     color:#332f2a; font:500 14px/1.5 system-ui,-apple-system,sans-serif;
     max-height:96px; overflow:auto; word-break:break-word;
+    border-radius:10px; padding:7px 9px; margin:-7px -9px 0;
+    outline:none; transition: background 160ms ease, box-shadow 160ms ease;
   }
+  /* The text is editable, but that shouldn't be loud — it reads as plain text
+     until you focus it, then a soft plate confirms you're editing. */
+  #kc-tc-text:hover { background:rgba(0,0,0,0.03); }
+  #kc-tc-text:focus {
+    background:rgba(255,255,255,0.85);
+    box-shadow: inset 0 0 0 1.5px rgba(58,74,96,0.45);
+  }
+  #kc-tc-text.is-saved { box-shadow: inset 0 0 0 1.5px rgba(47,74,51,0.55); }
   #kc-tc-link {
     color:#2b6cb0; font:500 12px system-ui,sans-serif; text-decoration:none;
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:none;
@@ -708,6 +734,29 @@ const OVERLAY_CSS = `
   #kc-tc-actions button.is-danger { color:#8c3b32; background:rgba(140,59,50,0.09); }
   #kc-tc-open { display:none; }
   #kc-tc-open.is-shown { display:inline-block; }
+
+  /* Resurface line — shown only when a thought is scheduled to come back. */
+  #kc-tc-resurface {
+    display:none; color:#5d5348; font:500 12px system-ui,-apple-system,sans-serif;
+    padding:6px 10px; border-radius:10px; background:rgba(246,239,228,0.9);
+  }
+  #kc-tc-resurface.is-shown { display:block; }
+
+  /* "Later" menu — pick when a parked thought resurfaces. Anchored above the
+     button row so it never pushes the card's actions around. */
+  #kc-tc-later-menu {
+    position:absolute; right:16px; bottom:54px; z-index:6; display:none;
+    flex-direction:column; min-width:130px; padding:5px; border-radius:13px;
+    background:rgba(252,251,249,0.98);
+    box-shadow:0 14px 32px rgba(54,40,24,0.24); border:1px solid rgba(255,255,255,0.75);
+  }
+  #kc-tc-later-menu.is-open { display:flex; }
+  #kc-tc-later-menu button {
+    border:none; background:none; cursor:pointer; text-align:left;
+    padding:9px 11px; border-radius:9px; color:#3f3a34;
+    font:500 13px system-ui,-apple-system,sans-serif;
+  }
+  #kc-tc-later-menu button:hover { background:rgba(0,0,0,0.05); }
 
   /* Undo — reversible beats a confirm dialog: no interruption, still safe. */
   #kc-undo {
