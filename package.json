@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:ext": "vite build --config vite.config.ext.js && node -e \"require('fs').copyFileSync('extension/content.js','public/kickoff-overlay.js')\"",
+    "build:ext": "vite build --config vite.config.ext.js && node scripts/copy-demo-bundle.js",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
