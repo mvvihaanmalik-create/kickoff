@@ -323,32 +323,64 @@ const OVERLAY_CSS = `
   #kc-dish.is-collapsed #kc-dish-count { display:none; }
   #kc-dish.is-collapsed #kc-dish-glow { opacity:0.35; }
   #kc-dish.is-dragging #net { box-shadow: inset 12px 0 26px rgba(92,78,58,0.12), 0 26px 58px rgba(54,40,24,0.30); }
-  /* The net — frosted mesh with depth shading so it recedes into the goal. */
+  /* The net — a taut, concave mesh membrane seen from above. Same rounded shape
+     as before; the depth is all shading and a genuinely visible weave. The base
+     is a bowl: light pools where the surface faces the light (front-left) and
+     sinks into shadow toward the back-right corner, so the membrane reads as
+     dished rather than flat. */
   #net {
-    position:absolute; left:15px; right:0; top:0; bottom:0;
+    position:absolute; left:15px; right:0; top:0; bottom:0; overflow:hidden;
     border-radius:0 22px 22px 0;
-    border:0.5px solid rgba(255,255,255,0.62); border-left:none;
+    border:1px solid rgba(255,255,255,0.72); border-left:none;
     background:
-      /* hairline weave — barely-there, reads as fabric not graph paper */
-      repeating-linear-gradient(45deg, transparent 0 7px, rgba(255,255,255,0.13) 7px 7.6px),
-      repeating-linear-gradient(-45deg, transparent 0 7px, rgba(255,255,255,0.13) 7px 7.6px),
-      /* the surface itself: a smooth, even falloff toward the back */
-      linear-gradient(90deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.14) 38%, rgba(255,255,255,0.06) 72%, rgba(58,50,42,0.10) 100%);
-    -webkit-backdrop-filter: blur(22px) saturate(1.7) brightness(1.06);
-    backdrop-filter: blur(22px) saturate(1.7) brightness(1.06);
+      radial-gradient(150% 128% at 14% 42%,
+        rgba(255,255,255,0.40) 0%,
+        rgba(255,255,255,0.16) 34%,
+        rgba(96,84,68,0.14) 68%,
+        rgba(40,33,26,0.30) 100%);
+    -webkit-backdrop-filter: blur(20px) saturate(1.7) brightness(1.05);
+    backdrop-filter: blur(20px) saturate(1.7) brightness(1.05);
     box-shadow:
-      inset 20px 0 40px rgba(72,62,50,0.16),        /* depth, softened */
-      inset 0 0.5px 0 rgba(255,255,255,0.9),        /* crisp lit top edge */
-      inset 0 -0.5px 0 rgba(255,255,255,0.45),
-      0 24px 60px rgba(40,32,24,0.20),              /* wide ambient shadow */
-      0 2px 8px rgba(40,32,24,0.10);
+      inset 0 1px 0 rgba(255,255,255,0.95),         /* crisp lit crossbar edge */
+      inset 0 -1px 0 rgba(255,255,255,0.5),
+      inset 22px 0 44px rgba(48,40,30,0.22),         /* the net set into its channel */
+      inset -10px 0 30px rgba(24,19,14,0.22),        /* back wall in shadow */
+      0 26px 62px rgba(40,32,24,0.24),               /* wide ambient shadow */
+      0 2px 8px rgba(40,32,24,0.12);
     transform-origin:right center; will-change:transform;
     transition: box-shadow 320ms ease;
   }
-  /* A whisper of depth pooling at the back — volume without dirt. */
+  /* The weave — prominent now. Each strand is a little tube: a dark edge, a lit
+     crown, a dark edge, so it catches light like rope rather than reading as a
+     ruled pencil line. Two diagonals cross into a diamond mesh. The radial mask
+     keeps the mesh crispest across the dished centre and lets it sink into the
+     shaded rim, which is the cue that the membrane is curved, not flat. */
+  #net::before {
+    content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+    background:
+      repeating-linear-gradient(45deg,
+        transparent 0 5.5px,
+        rgba(58,48,38,0.16) 5.5px 6.4px,
+        rgba(255,255,255,0.62) 6.4px 7.4px,
+        rgba(58,48,38,0.16) 7.4px 8.3px,
+        transparent 8.3px 12px),
+      repeating-linear-gradient(-45deg,
+        transparent 0 5.5px,
+        rgba(58,48,38,0.16) 5.5px 6.4px,
+        rgba(255,255,255,0.62) 6.4px 7.4px,
+        rgba(58,48,38,0.16) 7.4px 8.3px,
+        transparent 8.3px 12px);
+    -webkit-mask-image: radial-gradient(135% 120% at 30% 48%, #000 42%, rgba(0,0,0,0.6) 76%, rgba(0,0,0,0.28) 100%);
+    mask-image: radial-gradient(135% 120% at 30% 48%, #000 42%, rgba(0,0,0,0.6) 76%, rgba(0,0,0,0.28) 100%);
+  }
+  /* A curved specular band riding the front of the membrane, plus depth pooling
+     in the back corner — the pair of highlights/shadow that sells "taut and
+     bowed toward you" rather than "printed rectangle". */
   #net::after {
     content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
-    background: radial-gradient(130% 100% at 100% 50%, rgba(44,38,30,0.16), rgba(44,38,30,0) 66%);
+    background:
+      radial-gradient(70% 46% at 30% 20%, rgba(255,255,255,0.28), rgba(255,255,255,0) 72%),
+      radial-gradient(120% 104% at 104% 54%, rgba(28,22,16,0.34), rgba(28,22,16,0) 60%);
   }
   #kc-dish:hover #net { box-shadow: inset 12px 0 26px rgba(92,78,58,0.14), inset 0 1px 0 rgba(255,255,255,0.9), 0 20px 46px rgba(54,40,24,0.26); }
   #net.is-billow { animation: billow 760ms cubic-bezier(0.22,1,0.36,1); }
