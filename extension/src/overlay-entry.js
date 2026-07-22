@@ -321,7 +321,7 @@ const OVERLAY_CSS = `
   #kc-dish.is-collapsed #kc-puck { display:flex; }
   #kc-dish.is-collapsed { cursor:pointer; }
   #kc-dish.is-collapsed #kc-dish-count { display:none; }
-  #kc-dish.is-collapsed #kc-dish-glow { opacity:0.35; }
+  #kc-dish.is-collapsed #kc-dish-glow { display:none; }
   #kc-dish.is-dragging #net { box-shadow: inset 12px 0 26px rgba(92,78,58,0.12), 0 26px 58px rgba(54,40,24,0.30); }
   /* The net — a taut, concave mesh membrane seen from above. Same rounded shape
      as before; the depth is all shading and a genuinely visible weave. The base
@@ -517,22 +517,22 @@ const OVERLAY_CSS = `
      "goal" identity (a faint warm glow), understated. ──────────────────────── */
   /* Warm glow pooling at the goal mouth — the "aim here" hint. Brighter when
      the goal is holding thoughts. */
-  /* Contained INSIDE the net's bounds and fully faded before the back edge —
-     the old version overshot the dish on every side, which read as an amber
-     halo leaking out of the goal on dark pages. Tone cooled toward warm-white:
-     saturated amber is exactly what reads as cheap on a dark background. */
+  /* No steady glow. Any always-on light patch gets cropped by its own box
+     somewhere, and on a dark page that crop line reads as a pale rectangle
+     (which it did, twice). The element stays only for the store pulse — a
+     brief, fully-fading flash when a ball lands — and the ellipse dies to
+     zero well inside the box on every side, so nothing can ever be clipped. */
   #kc-dish-glow {
     position:absolute; left:15px; right:0; top:2px; bottom:2px;
     pointer-events:none; border-radius:0 22px 22px 0;
-    background: radial-gradient(115% 86% at 6% 50%, rgba(255,240,218,0.34), rgba(255,240,218,0.07) 44%, rgba(255,240,218,0) 66%);
-    opacity:0.55;
+    background: radial-gradient(72% 40% at 26% 50%, rgba(255,240,218,0.5), rgba(255,240,218,0.10) 58%, rgba(255,240,218,0) 88%);
+    opacity:0;
   }
-  #kc-dish.has-thoughts #kc-dish-glow { opacity:1; }
-  #kc-dish-glow.is-pulse { animation: kc-pulse 700ms ease-out; }
+  #kc-dish-glow.is-pulse { animation: kc-pulse 820ms ease-out; }
   @keyframes kc-pulse {
-    0% { transform:scale(0.92); opacity:0.55; }
-    28% { transform:scale(1.16); opacity:1; }
-    100% { transform:scale(1); opacity:1; }
+    0% { transform:scale(0.92); opacity:0; }
+    26% { transform:scale(1.10); opacity:0.9; }
+    100% { transform:scale(1); opacity:0; }
   }
   /* How many thoughts the goal is holding. */
   #kc-dish-count {
