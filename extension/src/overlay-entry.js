@@ -163,8 +163,11 @@ const OVERLAY_DOM = `
     <button id="kc-more" type="button" title="More">⋯</button>
     <div id="kc-more-menu">
       <button id="kc-export" type="button">Copy all</button>
+      <button id="kc-backup" type="button">Back up…</button>
+      <button id="kc-restore" type="button">Restore…</button>
       <button id="kc-clear" type="button" class="is-danger">Clear all</button>
     </div>
+    <input id="kc-restore-file" type="file" accept="application/json,.json" hidden />
   </div>
   <!-- Tag chips — only rendered when thoughts actually carry #tags. -->
   <div id="kc-tags"></div>

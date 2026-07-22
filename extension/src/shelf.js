@@ -58,6 +58,9 @@ export function initShelf(root, engineApi) {
     kickoffGo: root.querySelector("#kc-kickoff-go"),
     kickoffSkip: root.querySelector("#kc-kickoff-skip"),
     tags: root.querySelector("#kc-tags"),
+    backupBtn: root.querySelector("#kc-backup"),
+    restoreBtn: root.querySelector("#kc-restore"),
+    restoreFile: root.querySelector("#kc-restore-file"),
     recapBtn: root.querySelector("#kc-recap"),
     stats: root.querySelector("#kc-stats"),
     statsGrid: root.querySelector("#kc-stats-grid"),
@@ -168,6 +171,45 @@ export function initShelf(root, engineApi) {
       audio.tick();
       els.exportBtn.classList.add("is-copied");
       setTimeout(() => els.exportBtn.classList.remove("is-copied"), 1400);
+    });
+  }
+
+  // Backup — a dated JSON file, downloaded. Restore — additive merge from one.
+  if (els.backupBtn) {
+    els.backupBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      els.menu.classList.remove("is-open");
+      const blob = new Blob([serializeBackup(thoughts, finishedLog)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `kickoff-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      audio.tick();
+    });
+    els.restoreBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      els.restoreFile.click();
+    });
+    els.restoreFile.addEventListener("change", () => {
+      const file = els.restoreFile.files && els.restoreFile.files[0];
+      els.restoreFile.value = ""; // same file can be picked again later
+      if (!file) return;
+      file.text().then((raw) => {
+        const merged = mergeBackup(thoughts, finishedLog, raw);
+        thoughts = merged.thoughts;
+        finishedLog = merged.finished;
+        saveThoughts(thoughts);
+        saveFinished(finishedLog);
+        updateDishCount();
+        renderTags();
+        if (open) refreshSpheres();
+        updateEmptyState();
+        audio.tick(0.62);
+        flashMenuLabel(els.restoreBtn, merged.added === 0 ? "Nothing new" : `Restored ${merged.added}`);
+      }).catch(() => {
+        flashMenuLabel(els.restoreBtn, "Not a KICKOFF backup");
+      });
     });
   }
 
@@ -602,6 +644,15 @@ function onGoalPointerDown(e) {
   window.addEventListener("pointerup", up, { passive: true });
 }
 
+// Report an outcome on the menu item itself, where the click just happened —
+// no toast needed for something this local.
+function flashMenuLabel(btn, text) {
+  const orig = btn.dataset.label || (btn.dataset.label = btn.textContent);
+  btn.textContent = text;
+  els.menu.classList.add("is-open");
+  setTimeout(() => { btn.textContent = orig; els.menu.classList.remove("is-open"); }, 1600);
+}
+
 function onStore(thought) {
   restart(els.glow, "is-pulse"); // the goal acknowledges with a glow-pulse
   thoughts.push({
@@ -614,6 +665,41 @@ function onStore(thought) {
   renderTags();
   if (open) refreshSpheres();
   if (reviewQueue.length) setTimeout(nextReviewThought, 700); // continue the review
+}
+
+// ── Backup / Restore (step 9, the shape that can't lose data) ────────────────
+// Live chrome.storage.sync was considered and rejected: 8KB per-item caps the
+// cache at ~30 thoughts, and whole-array last-write-wins silently drops one
+// device's edits. A file you export and import has neither failure mode, works
+// across browsers/machines, and doubles as an archive you actually own.
+
+export function serializeBackup(thoughts, finished) {
+  return JSON.stringify({
+    app: "kickoff-mental-cache",
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    thoughts,
+    finished,
+  }, null, 2);
+}
+
+// Additive merge, deduped by id — restoring can only ever ADD thoughts, never
+// clobber or delete what's here. Returns what to save plus the count added,
+// so the UI can report honestly. Throws on files we don't recognise.
+export function mergeBackup(current, currentFinished, raw) {
+  const data = JSON.parse(raw);
+  if (!data || data.app !== "kickoff-mental-cache" || !Array.isArray(data.thoughts)) {
+    throw new Error("not a KICKOFF backup");
+  }
+  const have = new Set(current.map((t) => t.id));
+  const incoming = data.thoughts.filter(
+    (t) => t && typeof t.id === "string" && typeof t.text === "string" && t.text.trim() && !have.has(t.id)
+  );
+  const finished = [...new Set([...(currentFinished || []), ...(Array.isArray(data.finished) ? data.finished : [])])]
+    .filter((ts) => typeof ts === "number")
+    .sort((a, b) => a - b)
+    .slice(-400);
+  return { thoughts: current.concat(incoming), finished, added: incoming.length };
 }
 
 // ── Tags ─────────────────────────────────────────────────────────────────────

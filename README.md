@@ -91,7 +91,7 @@ itself away again once you've dealt with it.
 | Click a sphere | Unwraps it into a card — the text is **editable in place** |
 | **Later…** on a card | Park it to resurface in 1 / 3 / 7 / 30 days |
 | **Recap** (tray bar) | Stats: kept, finished this week, streak, oldest waiting |
-| Tray `⋯` | Copy all as markdown, or Clear all (with undo) |
+| Tray `⋯` | Copy all as markdown · **Back up…** / **Restore…** · Clear all (undo) |
 
 Drag the goal to any edge — it always turns its back to the screen edge. The
 first page you open each day offers a **Daily Kickoff**: up to three parked
@@ -177,12 +177,13 @@ The interesting cases are regressions for two real bugs, both silent data loss:
 
 ## Deliberately not built
 
-**`chrome.storage.sync`.** It caps at 8KB per item — roughly 25–40 thoughts —
-and syncing the array as one blob makes every write last-write-wins, so two
-devices editing between syncs silently lose one side's thoughts. A tool for not
-losing your thoughts shouldn't ship that. `storage.js` is a single swappable
-abstraction, so a per-item sync with proper merging can be added later without
-touching anything else.
+**Live `chrome.storage.sync`.** It caps at 8KB per item — roughly 25–40
+thoughts — and syncing the array as one blob makes every write last-write-wins,
+so two devices editing between syncs silently lose one side's thoughts. A tool
+for not losing your thoughts shouldn't ship that. What shipped instead:
+**Back up… / Restore…** in the tray menu — a dated JSON file you own, and an
+additive merge on import that can only ever add thoughts, never clobber or
+delete (enforced by tests). It moves between machines, browsers, and time.
 
 **Mobile.** Chrome on iOS, iPadOS and Android has no extension runtime at all,
 so this cannot run there. The layout and input are responsive and touch-capable
