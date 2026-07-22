@@ -324,6 +324,13 @@ const OVERLAY_CSS = `
     color:#4b463f; font:600 16px/1 system-ui,-apple-system,sans-serif;
   }
   #kc-dish.is-dragging #kc-puck { cursor:grabbing; }
+  /* Acknowledgement pop — an omnibox / right-click capture landed here. */
+  #kc-puck.is-pop { animation: kc-pop 480ms cubic-bezier(0.34,1.56,0.64,1); }
+  @keyframes kc-pop {
+    0% { transform:scale(1); }
+    38% { transform:scale(1.22); }
+    100% { transform:scale(1); }
+  }
   #kc-dish.is-collapsed #kc-puck { display:flex; }
   #kc-dish.is-collapsed { cursor:pointer; }
   #kc-dish.is-collapsed #kc-dish-count { display:none; }

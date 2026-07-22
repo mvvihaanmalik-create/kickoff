@@ -1,9 +1,23 @@
 {
   "manifest_version": 3,
   "name": "KICKOFF — Mental Cache",
-  "version": "2.0.0",
-  "description": "Offload a thought and it becomes a living, kickable sphere. Store it in the dish, unwrap it to read, flick it away to finish.",
-  "permissions": ["storage"],
+  "version": "2.1.0",
+  "description": "Offload a thought and it becomes a living, kickable sphere. Store it in the goal, unwrap it to read, flick it away to finish.",
+  "permissions": ["storage", "alarms", "notifications", "contextMenus"],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "omnibox": {
+    "keyword": "kick"
+  },
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],

@@ -213,6 +213,27 @@ export function initShelf(root, engineApi) {
     else maybeDailyKickoff();
   });
   loadFinished().then((log) => { finishedLog = log; });
+
+  // Live refresh: captures can now arrive from OUTSIDE this page — the omnibox
+  // (`kick …`), the right-click menu, or another tab. storage.onChanged is the
+  // one channel they all share, so the count and tray stay honest everywhere.
+  // (Also fires for our own writes; adopting identical data is a no-op.)
+  if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.onChanged) {
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== "local" || !changes.kc_thoughts) return;
+      thoughts = changes.kc_thoughts.newValue || [];
+      updateDishCount();
+      renderTags();
+      if (open) refreshSpheres();
+    });
+  }
+  // The background worker asks the nearest overlay to acknowledge an
+  // out-of-page capture — the puck pops, so the kick visibly landed somewhere.
+  if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.onMessage) {
+    chrome.runtime.onMessage.addListener((msg) => {
+      if (msg && msg.type === "kc:captured") restart(els.puck, "is-pop");
+    });
+  }
 }
 
 // ── Daily Kickoff ────────────────────────────────────────────────────────────

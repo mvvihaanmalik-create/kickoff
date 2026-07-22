@@ -78,6 +78,9 @@ itself away again once you've dealt with it.
 |---|---|
 | `Ctrl/Cmd + Shift + K` | Open the input pill (pre-fills with any selected text) |
 | `Ctrl/Cmd + Shift + S` | Capture the current page — title and URL, no typing |
+| `kick …` in the address bar | Capture without touching the page at all |
+| Right-click a selection | **Kick this into KICKOFF** — selection + source link |
+| Open a new tab | The pitch: your goal, your ball, and the daily review live there |
 | `Ctrl/Cmd + Shift + G` | Show / hide the goal manually |
 | Type `#work buy milk` | Tags parse straight out of the text — chips appear in the tray |
 | Drag the ball | Kick it — swipe for power and curl, poke to nudge |
@@ -93,6 +96,16 @@ itself away again once you've dealt with it.
 Drag the goal to any edge — it always turns its back to the screen edge. The
 first page you open each day offers a **Daily Kickoff**: up to three parked
 thoughts, brought back for a decision.
+
+**A thought parked with "Later…" notifies you when it's due** — *"⚽ back on
+the pitch"* — and clicking the notification opens a new tab, where it's waiting
+in the goal. Nothing is sent anywhere; the alarm and the notification are both
+local.
+
+**Heads up:** the extension replaces your New Tab page with the pitch. That's
+deliberate — the review loop meets you at the moment you're already switching
+context — but if you'd rather keep your usual new tab, delete the
+`chrome_url_overrides` block from `manifest.json` and reload the extension.
 
 ## Development
 

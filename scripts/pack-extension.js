@@ -26,8 +26,12 @@ fs.rmSync(staging, { recursive: true, force: true });
 fs.rmSync(out, { force: true });
 fs.mkdirSync(staging, { recursive: true });
 
-for (const file of ["manifest.json", "content.js"]) {
+for (const file of ["manifest.json", "content.js", "background.js", "newtab.html"]) {
   fs.copyFileSync(path.join(root, "extension", file), path.join(staging, file));
+}
+fs.mkdirSync(path.join(staging, "icons"));
+for (const icon of fs.readdirSync(path.join(root, "extension", "icons"))) {
+  fs.copyFileSync(path.join(root, "extension", "icons", icon), path.join(staging, "icons", icon));
 }
 
 if (process.platform === "win32") {
