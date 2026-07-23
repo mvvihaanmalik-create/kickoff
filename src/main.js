@@ -45,11 +45,12 @@ export const CONFIG = {
   roamSpeed: 155, // px/s: gentle constant wander speed
   roamSteer: 1.6, // per s: how firmly it holds roamSpeed (tops up wall losses)
 
-  // Kick impulse.
-  kickFromSpeed: 0.9, // flick speed → impulse (a fast drag hits harder)
-  kickPokeGain: 3.0, // poke distance → impulse (a far poke hits harder)
-  kickMin: 260, // px/s: even a soft tap lands a real little pop
-  kickMax: 2200, // px/s: cap so a hard strike stays controllable
+  // Kick impulse. Tuned punchier — a kick should feel like it has real weight
+  // behind it, not a nudge; the ball leaves fast and travels.
+  kickFromSpeed: 1.18, // flick speed → impulse (a fast drag hits harder)
+  kickPokeGain: 3.8, // poke distance → impulse (a far poke hits harder)
+  kickMin: 340, // px/s: even a soft tap lands a real little pop
+  kickMax: 3000, // px/s: cap so a hard strike stays fast but on-screen
   flickIsDrag: 14, // px: drag longer than this reads as a swipe, not a poke
 
   // Spin / curve (the cheap Magnus approximation).
@@ -431,10 +432,15 @@ function integrate(dt, now) {
   if (state.phase === "storing") {
     const p = Math.min(1, (now - state.storeAt) / CONFIG.storeMs);
     if (dish) {
-      state.px += (dish.x - state.px) * Math.min(1, 12 * dt);
-      state.py += (dish.y - state.py) * Math.min(1, 12 * dt);
+      // A STRIKE into the goal, not a glide: accelerate hard toward the mouth so
+      // Keep feels like burying a shot. Rate ramps with p (18→30) so it snaps
+      // in decisively, and shrink is back-loaded (p²) so it stays ball-sized and
+      // fast most of the flight, collapsing only as it hits the net.
+      const rate = Math.min(1, (18 + 12 * p) * dt);
+      state.px += (dish.x - state.px) * rate;
+      state.py += (dish.y - state.py) * rate;
     }
-    state.storeScale = 1 - p;
+    state.storeScale = 1 - p * p;
     if (p >= 1) finishStore();
     return;
   }
@@ -952,6 +958,9 @@ function beginStore(now) {
   state.phase = "storing";
   state.storeAt = now;
   state.storeScale = 1;
+  // Kick off the strike with a burst of spin — the ball visibly rips toward the
+  // goal rather than sliding there.
+  state.spin += (state.px < (dish ? dish.x : vw()) ? 1 : -1) * 14;
 }
 function finishStore() {
   const thought = {
