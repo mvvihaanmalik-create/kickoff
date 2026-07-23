@@ -26,7 +26,7 @@ fs.rmSync(staging, { recursive: true, force: true });
 fs.rmSync(out, { force: true });
 fs.mkdirSync(staging, { recursive: true });
 
-for (const file of ["manifest.json", "content.js", "background.js", "newtab.html"]) {
+for (const file of ["manifest.json", "content.js", "background.js"]) {
   fs.copyFileSync(path.join(root, "extension", file), path.join(staging, file));
 }
 fs.mkdirSync(path.join(staging, "icons"));

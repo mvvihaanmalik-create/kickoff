@@ -80,7 +80,7 @@ itself away again once you've dealt with it.
 | `Ctrl/Cmd + Shift + S` | Capture the current page — title and URL, no typing |
 | `kick …` in the address bar | Capture without touching the page at all |
 | Right-click a selection | **Kick this into KICKOFF** — selection + source link |
-| Open a new tab | The pitch: your goal, your ball, and the daily review live there |
+| Click the toolbar football | Opens the capture pill on whatever page you're on |
 | `Ctrl/Cmd + Shift + G` | Show / hide the goal manually |
 | Type `#work buy milk` | Tags parse straight out of the text — chips appear in the tray |
 | Drag the ball | Kick it — swipe for power and curl, poke to nudge |
@@ -104,14 +104,9 @@ over a week, the puck gives one small **rattle** per day — the product nagging
 in its own physical language, capped hard so it never becomes noise.
 
 **A thought parked with "Later…" notifies you when it's due** — *"⚽ back on
-the pitch"* — and clicking the notification opens a new tab, where it's waiting
-in the goal. Nothing is sent anywhere; the alarm and the notification are both
+the pitch"* — and clicking the notification opens a fresh tab so you can deal
+with it. Nothing is sent anywhere; the alarm and the notification are both
 local.
-
-**Heads up:** the extension replaces your New Tab page with the pitch. That's
-deliberate — the review loop meets you at the moment you're already switching
-context — but if you'd rather keep your usual new tab, delete the
-`chrome_url_overrides` block from `manifest.json` and reload the extension.
 
 ## Development
 

@@ -121,19 +121,38 @@ function acknowledgeCapture(text) {
 }
 
 // ── Toolbar button ───────────────────────────────────────────────────────────
-// Clicking the football opens the capture pill on the current page. On a page
-// the overlay can't reach (chrome://, the Web Store, a fresh tab), open a new
-// tab instead — which IS the pitch, so capture is one keystroke away there.
-
-// Guarded like chrome.omnibox: if a build ever loads without the manifest
-// "action" key (or an older cached manifest), chrome.action is undefined and a
-// bare reference throws an uncaught TypeError at worker startup — which takes
-// the whole worker down, not just the button.
+// Clicking the football opens the capture pill ON THE CURRENT PAGE — it must
+// never yank you to a different tab. The wrinkle: content scripts only
+// auto-inject on navigation, so a tab already open when the extension loaded
+// has no overlay yet. So: try to summon; if nothing answers, inject the bundle
+// (it mounts idempotently) and summon again. Only a page Chrome forbids
+// scripting on (chrome://, the Web Store) can't be reached — there we explain,
+// rather than hijacking a tab.
+//
+// chrome.action is guarded because a bare reference throws an uncaught
+// TypeError at worker startup if the manifest "action" key is ever absent,
+// taking the whole worker down — not just the button.
 if (chrome.action) {
   chrome.action.onClicked.addListener((tab) => {
-    if (!tab || !tab.id) { chrome.tabs.create({}); return; }
+    if (!tab || !tab.id) return;
     chrome.tabs.sendMessage(tab.id, { type: "kc:summon" }, () => {
-      if (chrome.runtime.lastError) chrome.tabs.create({});
+      if (!chrome.runtime.lastError) return; // overlay was there and answered
+      chrome.scripting.executeScript(
+        { target: { tabId: tab.id }, files: ["content.js"] },
+        () => {
+          if (chrome.runtime.lastError) {
+            chrome.notifications.create({
+              type: "basic",
+              iconUrl: "icons/icon128.png",
+              title: "KICKOFF",
+              message: "Open KICKOFF on a normal web page — it can't run on Chrome's own pages.",
+            });
+            return;
+          }
+          // Mounted just now — a tick to register its listener, then summon.
+          setTimeout(() => chrome.tabs.sendMessage(tab.id, { type: "kc:summon" }, () => void chrome.runtime.lastError), 120);
+        }
+      );
     });
   });
 }
