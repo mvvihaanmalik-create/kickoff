@@ -48,6 +48,15 @@ export function initBrainDump(root, engineApi) {
   // Global shortcut: Cmd/Ctrl+Shift+K. Captured on the document so it works
   // regardless of page focus; we only preventDefault when we actually act.
   document.addEventListener("keydown", onGlobalKey, true);
+
+  // The toolbar football (background.js) asks the overlay to open capture. The
+  // callback ack tells the worker an overlay was present, so it doesn't also
+  // open a new tab as the fallback.
+  if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.onMessage) {
+    chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+      if (msg && msg.type === "kc:summon") { if (!open) summon(); sendResponse({ ok: true }); }
+    });
+  }
 }
 
 // The + button: click toggles capture, drag relocates it. Same movement

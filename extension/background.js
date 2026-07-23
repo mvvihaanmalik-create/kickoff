@@ -120,6 +120,18 @@ function acknowledgeCapture(text) {
   });
 }
 
+// ── Toolbar button ───────────────────────────────────────────────────────────
+// Clicking the football opens the capture pill on the current page. On a page
+// the overlay can't reach (chrome://, the Web Store, a fresh tab), open a new
+// tab instead — which IS the pitch, so capture is one keystroke away there.
+
+chrome.action.onClicked.addListener((tab) => {
+  if (!tab || !tab.id) { chrome.tabs.create({}); return; }
+  chrome.tabs.sendMessage(tab.id, { type: "kc:summon" }, () => {
+    if (chrome.runtime.lastError) chrome.tabs.create({});
+  });
+});
+
 // ── 2. Omnibox: `kick <thought>` from the address bar ────────────────────────
 
 if (chrome.omnibox) {
