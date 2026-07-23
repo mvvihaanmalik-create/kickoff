@@ -125,12 +125,18 @@ function acknowledgeCapture(text) {
 // the overlay can't reach (chrome://, the Web Store, a fresh tab), open a new
 // tab instead — which IS the pitch, so capture is one keystroke away there.
 
-chrome.action.onClicked.addListener((tab) => {
-  if (!tab || !tab.id) { chrome.tabs.create({}); return; }
-  chrome.tabs.sendMessage(tab.id, { type: "kc:summon" }, () => {
-    if (chrome.runtime.lastError) chrome.tabs.create({});
+// Guarded like chrome.omnibox: if a build ever loads without the manifest
+// "action" key (or an older cached manifest), chrome.action is undefined and a
+// bare reference throws an uncaught TypeError at worker startup — which takes
+// the whole worker down, not just the button.
+if (chrome.action) {
+  chrome.action.onClicked.addListener((tab) => {
+    if (!tab || !tab.id) { chrome.tabs.create({}); return; }
+    chrome.tabs.sendMessage(tab.id, { type: "kc:summon" }, () => {
+      if (chrome.runtime.lastError) chrome.tabs.create({});
+    });
   });
-});
+}
 
 // ── 2. Omnibox: `kick <thought>` from the address bar ────────────────────────
 
