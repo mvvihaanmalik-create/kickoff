@@ -23,16 +23,31 @@
   }
   .card{
     background:rgba(255,255,255,0.045);border:1px solid rgba(255,255,255,0.09);
-    border-radius:14px;padding:22px 24px;margin:18px 0;
+    border-radius:14px;padding:10px 26px;margin:26px 0;
     box-shadow:0 8px 28px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.05);
   }
+  .step{display:flex;align-items:baseline;gap:14px;margin:16px 0}
+  .n{
+    flex:none;width:26px;height:26px;border-radius:50%;
+    display:inline-flex;align-items:center;justify-content:center;
+    background:rgba(138,180,248,0.16);color:#8ab4f8;
+    font:600 13px system-ui,sans-serif;transform:translateY(3px);
+  }
+  .note{margin:26px 0 6px;color:#c9d2e3}
+  .tiny{font-size:14px;color:#6d7a94;margin:0}
 </style></head><body>
 <div class="wrap">
-  <h1>A perfectly normal web page</h1>
-  <p class="sub">This is just a plain page standing in for whatever you'd actually be browsing. The Mental Cache overlay is floating on top of it.</p>
-  <div class="card"><b>Try it:</b> press <kbd>Ctrl/Cmd</kbd> <kbd>Shift</kbd> <kbd>K</kbd> (or click the <b>＋</b>, bottom-left), type a thought, hit Enter.</div>
-  <div class="card">A ball appears carrying your thought — kick it around. <b>Keep</b> boots it into the goal with a celebration; <b>Done</b> sends it flying until it dissolves. Click the round <b>puck</b> at the right edge to open everything you've kept: search it, filter by <b>#tags</b>, edit a thought in place, park one for <b>Later</b>, or open <b>Recap</b> for your stats and streak.</div>
-  <p>Notice you can still select this text, click <a href="#x">this link</a>, and scroll — the overlay never blocks the page.</p>
+  <h1>Pretend this is any website.</h1>
+  <p class="sub">You're browsing. A thought pops up. Toss it to the ball and get back to what you were doing.</p>
+
+  <div class="card">
+    <p class="step"><span class="n">1</span> Press <kbd>Ctrl/Cmd</kbd> <kbd>Shift</kbd> <kbd>K</kbd>, type what's on your mind, hit Enter.</p>
+    <p class="step"><span class="n">2</span> It becomes a little football. Give it a kick. Go on.</p>
+    <p class="step"><span class="n">3</span> Done with it? <b>Boot it into the goal</b> to keep it, or <b>flick it away</b> to let it go.</p>
+  </div>
+
+  <p class="note">Everything you keep lives in the <b>ball</b> at the right edge — click it to search, tag, or revisit later. Nothing leaves your browser, ever.</p>
+  <p class="tiny">And yes — you can still select this text, follow <a href="#x">this link</a>, and scroll. The ball stays out of your way.</p>
 </div>
 <script>
   // Mock chrome.storage.local (localStorage-backed) so your thoughts persist in this demo.
