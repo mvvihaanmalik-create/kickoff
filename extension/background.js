@@ -135,8 +135,11 @@ chrome.action.onClicked.addListener((tab) => {
 // ── 2. Omnibox: `kick <thought>` from the address bar ────────────────────────
 
 if (chrome.omnibox) {
+  // Plain text, no markup: the default suggestion is shown before an argument
+  // exists, so %s has nothing to fill and the <match> markup only risks a
+  // "parsing suggestion" error. Keep it simple and safe.
   chrome.omnibox.setDefaultSuggestion({
-    description: "Kick a thought into your cache: <match>%s</match>",
+    description: "Type a thought, then Enter to kick it into your cache",
   });
   chrome.omnibox.onInputEntered.addListener((text) => {
     addThought(text).then((t) => { if (t) acknowledgeCapture(t.text); });
@@ -146,10 +149,15 @@ if (chrome.omnibox) {
 // ── 3. Context menu: right-click a selection ─────────────────────────────────
 
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.create({
-    id: "kc-kick-selection",
-    title: "Kick this into KICKOFF",
-    contexts: ["selection"],
+  // removeAll first: reloading an unpacked extension fires onInstalled again
+  // while the menu still exists, and create() with a duplicate id throws
+  // "Cannot create item with duplicate id" — the error behind the red button.
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: "kc-kick-selection",
+      title: "Kick this into KICKOFF",
+      contexts: ["selection"],
+    });
   });
   scheduleDueAlarm();
 });
