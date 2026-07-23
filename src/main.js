@@ -99,7 +99,8 @@ export const CONFIG = {
   flourishDecay: 3.0, // per s: the whirl bleeds off
 
   // Mental Cache.
-  thoughtCap: 120, // max characters of a thought (§7 — a brain-dump is short)
+  thoughtCap: 120, // max characters shown on the ball face (the card shows the rest)
+  ringCap: 22, // ≤ this many chars gets the 3D revolving wrap; longer stays a flat readable band
   breatheAmp: 0.03, // idle breathing: 100% → 103% → 100%
   breathePeriod: 4.2, // s per breathing cycle
   storeCaptureR: 96, // px: how near the goal the ball must come to be kept
@@ -1079,9 +1080,49 @@ function setFaceText(text) {
   const t = whole.length > CONFIG.thoughtCap
     ? whole.slice(0, CONFIG.thoughtCap - 1).trimEnd() + "…"
     : whole;
-  faceEl.textContent = t;
-  faceEl.style.fontSize = labelFontSize(t) + "px";
   faceEl.setAttribute("data-text", t);
+  // Short thoughts get the 3D revolving wrap; longer ones keep the flat upright
+  // band, which is the only way they stay readable. Two presentations, chosen by
+  // what actually reads at 92px.
+  if (t.length <= CONFIG.ringCap) buildFaceRing(t);
+  else {
+    faceEl.className = "";
+    faceEl.textContent = t;
+    faceEl.style.fontSize = labelFontSize(t) + "px";
+  }
+}
+
+// Wrap the text around a cylinder that revolves left→right, like lettering on a
+// spinning ball. The thought repeats around the full ring so the front is always
+// populated (and readable); backface-visibility hides the far side for free, so
+// there's no mirrored clutter — only the near hemisphere ever shows.
+function buildFaceRing(t) {
+  const fs = Math.min(15, labelFontSize(t) + 1);
+  const ring = (t + "   ·   ");
+  const charW = fs * 0.62;
+  // Enough slots to seat the repeated text with a clean circumference.
+  let s = ring;
+  const target = Math.max(ring.length, 22);
+  while (s.length < target) s += ring;
+  const slots = s.length;
+  const chars = s.split("");
+  const step = 360 / slots;
+  const radius = (charW / 2) / Math.tan(Math.PI / slots);
+
+  faceEl.className = "is-ring";
+  faceEl.textContent = "";
+  faceEl.style.fontSize = fs + "px";
+  const spin = document.createElement("div");
+  spin.className = "face-ring";
+  // Revolution time scales with size so bigger rings don't feel frantic.
+  spin.style.animationDuration = (slots * 0.34).toFixed(1) + "s";
+  chars.forEach((ch, i) => {
+    const sp = document.createElement("span");
+    sp.textContent = ch === " " ? " " : ch;
+    sp.style.transform = `translate(-50%,-50%) rotateY(${i * step}deg) translateZ(${radius.toFixed(1)}px)`;
+    spin.appendChild(sp);
+  });
+  faceEl.appendChild(spin);
 }
 
 // Font size for the ball's label band, by text length.

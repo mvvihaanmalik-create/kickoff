@@ -294,6 +294,26 @@ const OVERLAY_CSS = `
     font-weight:600; line-height:1.14; letter-spacing:0.005em;
     word-break:break-word; pointer-events:none;
   }
+  /* Revolving-wrap mode (short thoughts): the plate drops away, the band becomes
+     a 3D stage, and the side edges fade so characters melt in and out cleanly. */
+  #ball-face.is-ring {
+    background:transparent; box-shadow:none; overflow:visible;
+    border-radius:0; perspective:210px;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 24%, #000 76%, transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0, #000 24%, #000 76%, transparent 100%);
+  }
+  #ball-face .face-ring {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    animation: face-spin 8s linear infinite; will-change:transform;
+  }
+  #ball-face .face-ring span {
+    position:absolute; left:50%; top:50%;
+    backface-visibility:hidden; -webkit-backface-visibility:hidden;
+    color:#2a2621; font-weight:700; white-space:pre;
+    /* A soft light halo so each glyph reads on the ball with no plate behind it. */
+    text-shadow: 0 0 3px rgba(255,253,249,0.95), 0 1px 1px rgba(255,253,249,0.9);
+  }
+  @keyframes face-spin { from { transform:rotateY(0); } to { transform:rotateY(-360deg); } }
 
   /* ── The Goal, seen from above — the "keep" target. Two posts read as
      cylinders from overhead, a frosted net receding to the right, and the goal
@@ -917,6 +937,7 @@ const OVERLAY_CSS = `
   @media (prefers-reduced-motion: reduce) {
     .glass, .glass::before, #kc-dump, #kc-tray, #kc-dish-bowl, #kc-actions { transition:none; }
     #kc-dish-glow.is-pulse, #kc-puck.is-rattle, #kc-puck.is-pop { animation:none; }
+    #ball-face .face-ring { animation:none; } /* hold the wrap still, don't strobe */
     #kc-milestone { transition:opacity 200ms ease; }
   }
 </style>
