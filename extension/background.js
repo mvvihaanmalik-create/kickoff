@@ -12,7 +12,7 @@
 
 const KEY = "kc_thoughts";
 const NOTIFIED_KEY = "kc_notified_at";
-const CAP = 120; // must match CONFIG.thoughtCap — the ball's face can't take more
+const CAP = 2000; // capture sanity bound — the ball shows a headline, the card shows it all
 
 // ── Storage helpers (promise-wrapped, minimal) ───────────────────────────────
 

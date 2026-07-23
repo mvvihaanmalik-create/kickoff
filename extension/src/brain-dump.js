@@ -7,7 +7,10 @@ import * as audio from "../../src/audio.js";
 import { showGoal, relaxGoal } from "./shelf.js";
 import { loadTrigPos, saveTrigPos } from "./storage.js";
 
-const THOUGHT_CAP = 120;
+// The CAPTURE limit, not the ball's. The ball face shows a ~120-char headline
+// (its legibility cap, CONFIG.thoughtCap); the full text lives on the unwrap
+// card. 2000 is a sanity bound, not a product decision.
+const THOUGHT_CAP = 2000;
 
 let els = null;
 let api = null;

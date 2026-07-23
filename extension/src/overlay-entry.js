@@ -176,6 +176,7 @@ const OVERLAY_DOM = `
     <button id="kc-stats-close" type="button" aria-label="Close recap">×</button>
     <div id="kc-stats-grid"></div>
     <div id="kc-stats-oldest"></div>
+    <div id="kc-stats-next"></div>
     <button id="kc-stats-review" type="button">Review the oldest</button>
   </div>
   <div id="kc-tray-empty"></div>
@@ -209,6 +210,9 @@ const OVERLAY_DOM = `
   <button id="kc-kickoff-skip" type="button">Not now</button>
 </div>
 <div id="kc-tray-slots"></div>
+
+<!-- Milestone banner — every 10th finish / a 7-day streak earns a bigger moment. -->
+<div id="kc-milestone" role="status"></div>
 
 <!-- The Unwrap card — the active sphere read flat. Positioned/animated by
      unwrap.js off the engine's readAlpha. Text on a solid backing. -->
@@ -333,6 +337,16 @@ const OVERLAY_CSS = `
     0% { transform:scale(1); }
     38% { transform:scale(1.22); }
     100% { transform:scale(1); }
+  }
+  /* The impatient rattle — a restless ball, once a day, when something's been
+     on the bench over a week. Small and quick: a whisper, not an alarm. */
+  #kc-puck.is-rattle { animation: kc-rattle 560ms ease-in-out; }
+  @keyframes kc-rattle {
+    0%, 100% { transform:translateX(0); }
+    15% { transform:translateX(-3px) rotate(-3deg); }
+    35% { transform:translateX(3px) rotate(3deg); }
+    55% { transform:translateX(-2px) rotate(-2deg); }
+    75% { transform:translateX(2px) rotate(1deg); }
   }
   #kc-dish.is-collapsed #kc-puck { display:flex; }
   #kc-dish.is-collapsed { cursor:pointer; }
@@ -630,6 +644,8 @@ const OVERLAY_CSS = `
     color:#332f2a; font:500 17px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;
     letter-spacing:0.005em; white-space:pre-wrap; word-break:break-word;
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+    /* Thoughts can be long now — the card scrolls rather than eating the screen. */
+    max-height:52vh; overflow-y:auto; overscroll-behavior:contain;
   }
 
   /* ── Keep / Let go — the deliberate actions on the live thought. Bottom
@@ -772,6 +788,27 @@ const OVERLAY_CSS = `
     font:600 12.5px system-ui,-apple-system,sans-serif;
   }
   #kc-stats-review[disabled] { opacity:0.4; cursor:default; }
+  /* "Coming up" — there is always a next milestone approaching. */
+  #kc-stats-next {
+    flex:none; text-align:center; color:#8a8172;
+    font:500 11px system-ui,-apple-system,sans-serif; letter-spacing:0.02em;
+  }
+
+  /* ── Milestone banner: a glass pill that drops in top-centre, says its line,
+     and leaves. Big type, short life — a moment, not a UI element. */
+  #kc-milestone {
+    position:fixed; left:50%; top:26px; transform:translate(-50%,-16px) scale(0.94);
+    z-index:22; pointer-events:none; opacity:0;
+    padding:13px 24px; border-radius:22px;
+    background:rgba(252,251,249,0.92);
+    -webkit-backdrop-filter: blur(18px) saturate(1.6); backdrop-filter: blur(18px) saturate(1.6);
+    border:1px solid rgba(255,255,255,0.85);
+    box-shadow: 0 18px 44px rgba(40,32,22,0.26), inset 0 1.5px 1px rgba(255,255,255,0.95);
+    color:#3a352f; font:650 15px/1 system-ui,-apple-system,"Segoe UI",sans-serif;
+    letter-spacing:0.01em; white-space:nowrap;
+    transition: opacity 260ms ease, transform 420ms cubic-bezier(0.34,1.56,0.64,1);
+  }
+  #kc-milestone.is-shown { opacity:1; transform:translate(-50%,0) scale(1); }
 
   /* A stored thought, unwrapped in place. */
   #kc-thought-card {
@@ -879,7 +916,8 @@ const OVERLAY_CSS = `
 
   @media (prefers-reduced-motion: reduce) {
     .glass, .glass::before, #kc-dump, #kc-tray, #kc-dish-bowl, #kc-actions { transition:none; }
-    #kc-dish-glow.is-pulse { animation:none; }
+    #kc-dish-glow.is-pulse, #kc-puck.is-rattle, #kc-puck.is-pop { animation:none; }
+    #kc-milestone { transition:opacity 200ms ease; }
   }
 </style>
 `;

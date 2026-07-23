@@ -90,6 +90,30 @@ export function saveLastReview(day) {
   }
 }
 
+// The last day (YYYY-MM-DD) the puck rattled about a stale thought — the
+// impatience is capped at ONE physical nudge per day, ever, by contract.
+const RATTLE_KEY = "kc_rattleday";
+let memRattle = "";
+
+export function loadRattleDay() {
+  return new Promise((resolve) => {
+    if (hasChromeStorage()) {
+      try { chrome.storage.local.get(RATTLE_KEY, (r) => resolve((r && r[RATTLE_KEY]) || "")); }
+      catch { resolve(""); }
+    } else {
+      resolve(memRattle);
+    }
+  });
+}
+
+export function saveRattleDay(day) {
+  if (hasChromeStorage()) {
+    try { chrome.storage.local.set({ [RATTLE_KEY]: day }); } catch { /* ignore */ }
+  } else {
+    memRattle = day;
+  }
+}
+
 // Where the person dragged the + trigger to — remembered per browser.
 const TRIG_KEY = "kc_trigpos";
 let memTrig = null;

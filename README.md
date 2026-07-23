@@ -88,7 +88,7 @@ itself away again once you've dealt with it.
 | **Done** | Flicks it across the screen at speed; it bursts into vapour |
 | Click the puck | Opens the tray of everything you've kept |
 | `↑↓←→` / `⏎` in the tray | Move between spheres, Enter to read, Backspace to delete |
-| Click a sphere | Unwraps it into a card — the text is **editable in place** |
+| Click a sphere | Unwraps it into a card — full text (thoughts can be long; the ball shows the headline), **editable in place** |
 | **Later…** on a card | Park it to resurface in 1 / 3 / 7 / 30 days |
 | **Recap** (tray bar) | Stats: kept, finished this week, streak, oldest waiting |
 | Tray `⋯` | Copy all as markdown · **Back up…** / **Restore…** · Clear all (undo) |
@@ -96,6 +96,12 @@ itself away again once you've dealt with it.
 Drag the goal to any edge — it always turns its back to the screen edge. The
 first page you open each day offers a **Daily Kickoff**: up to three parked
 thoughts, brought back for a decision.
+
+**Milestones are moments**: every 10th thought gone for good, and the day a
+streak reaches 7, earn the full goal celebration and a one-line banner. Recap
+always shows what's coming up next. And if something has sat on the bench for
+over a week, the puck gives one small **rattle** per day — the product nagging
+in its own physical language, capped hard so it never becomes noise.
 
 **A thought parked with "Later…" notifies you when it's due** — *"⚽ back on
 the pitch"* — and clicking the notification opens a new tab, where it's waiting

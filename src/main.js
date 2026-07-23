@@ -1063,9 +1063,13 @@ function activate({ text = "", id = null, url = "", x, y } = {}) {
 // upright (not rolling) for legibility; the seams still roll to show motion.
 function setFaceText(text) {
   if (!faceEl) return;
-  const t = (text || "").trim().slice(0, CONFIG.thoughtCap);
-  // Real DOM text, sized to the length so short thoughts read big and long ones
-  // still fit the band (the full text is always available on the unwrap card).
+  // The ball shows a HEADLINE; storage holds the whole thought (the input cap
+  // was raised — a legibility limit on a 92px ball is not a licence to truncate
+  // someone's thinking). The ellipsis says "there's more on the card".
+  const whole = (text || "").trim();
+  const t = whole.length > CONFIG.thoughtCap
+    ? whole.slice(0, CONFIG.thoughtCap - 1).trimEnd() + "…"
+    : whole;
   faceEl.textContent = t;
   faceEl.style.fontSize = labelFontSize(t) + "px";
   faceEl.setAttribute("data-text", t);

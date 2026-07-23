@@ -6,7 +6,7 @@
 // "objects resting near each other" without any real collision (§7).
 import { CONFIG, labelFontSize } from "../../src/main.js";
 import * as audio from "../../src/audio.js";
-import { loadThoughts, saveThoughts, usingChromeStorage, isOnboarded, setOnboarded, loadGoalPos, saveGoalPos, loadLastReview, saveLastReview, loadFinished, saveFinished } from "./storage.js";
+import { loadThoughts, saveThoughts, usingChromeStorage, isOnboarded, setOnboarded, loadGoalPos, saveGoalPos, loadLastReview, saveLastReview, loadFinished, saveFinished, loadRattleDay, saveRattleDay } from "./storage.js";
 
 let api = null;
 let shadow = null;
@@ -217,8 +217,14 @@ export function initShelf(root, engineApi) {
   // A thought dissolved ("Done") — log the finish for the streak, then advance
   // the review. This is the only trace a finished thought leaves behind.
   api.setBreakHandler(() => {
+    const before = finishedLog.slice();
     finishedLog.push(Date.now());
     saveFinished(finishedLog);
+    // Milestone? Fire the FULL goal celebration (cheer, confetti, net billow)
+    // plus a banner — the moment should be unmistakably bigger than a normal
+    // finish. Delayed a beat so the dissolve finishes reading first.
+    const m = milestoneFor(before, finishedLog);
+    if (m) setTimeout(() => { setCollapsed(false); api.triggerGoal(); showMilestone(m.label); }, 650);
     if (reviewQueue.length) setTimeout(nextReviewThought, 700);
   });
   api.onFrame(update);
@@ -253,6 +259,7 @@ export function initShelf(root, engineApi) {
     renderTags();
     if (saved.length === 0) maybeOnboard();
     else maybeDailyKickoff();
+    maybeRattle();
   });
   loadFinished().then((log) => { finishedLog = log; });
 
@@ -370,6 +377,8 @@ function openStats() {
     ? `Longest on the bench: “${(s.oldest.text || "").slice(0, 56)}” — ${s.oldestDays === 0 ? "fresh today" : `${s.oldestDays} day${s.oldestDays === 1 ? "" : "s"} waiting`}.`
     : "Nothing on the bench. Clean sheet.";
   els.statsReview.disabled = !s.oldest;
+  const nextEl = shadow.querySelector("#kc-stats-next");
+  if (nextEl) nextEl.textContent = `Coming up: ${nextMilestone(finishedLog)}.`;
   // The spheres are position:fixed siblings, so they'd float straight over the
   // panel (and did). Recap owns the tray while it's open.
   els.slots.style.display = "none";
@@ -535,15 +544,34 @@ export function toggleCollapse() {
 
 // For the Brain Dump: opening the capture pill also presents the goal, so the
 // target you're about to aim at is on screen before the thought exists.
-export function showGoal() { setCollapsed(false); }
+export function showGoal() {
+  clearTimeout(tuckT); // a pending tuck must not fire under an open pill
+  setCollapsed(false);
+}
 // …and cancelling the pill lets it tuck away again, unless something needs it.
-export function relaxGoal() {
-  setTimeout(() => {
-    const busy = open || (api.isActive && api.isActive()) ||
-                 (els.stats && els.stats.classList.contains("is-open")) ||
-                 reviewQueue.length > 0;
-    if (!busy) setCollapsed(true);
-  }, 500);
+export function relaxGoal() { tuckIfIdle(500); }
+
+// ONE definition of "the goal has a job right now". Three timers used to carry
+// three slightly different copies of this list, and the weakest one clobbered a
+// milestone celebration mid-fireworks. Every deferred tuck-away goes through
+// here, and re-checks at fire time — never at schedule time.
+function goalBusy() {
+  const banner = shadow && shadow.querySelector("#kc-milestone");
+  return open ||
+    (api.isActive && api.isActive()) ||
+    (els.stats && els.stats.classList.contains("is-open")) ||
+    (els.kickoff && els.kickoff.classList.contains("is-open")) ||
+    (banner && banner.classList.contains("is-shown")) ||
+    reviewQueue.length > 0;
+}
+
+let tuckT = 0;
+function tuckIfIdle(delay) {
+  clearTimeout(tuckT);
+  tuckT = setTimeout(() => {
+    if (goalBusy()) tuckIfIdle(900); // something's playing — try again after
+    else setCollapsed(true);
+  }, delay);
 }
 
 function setCollapsed(v) {
@@ -561,25 +589,19 @@ function setCollapsed(v) {
 // wins: the puck and Ctrl+Shift+G still toggle it, and auto only acts on the
 // TRANSITIONS (thought appears / thought resolved), so it never fights you.
 let wasActive = false;
-let autoHideT = 0;
 
 function updateAutoPresence() {
   const active = api.isActive && api.isActive();
   if (active === wasActive) return;
   wasActive = active;
   if (active) {
-    clearTimeout(autoHideT);
+    clearTimeout(tuckT);
     setCollapsed(false); // a thought is live — show it the target
   } else {
-    // Resolved. Give the store/celebration a beat to finish, then get out of
-    // the way — unless the person is actively browsing the tray or Recap.
-    clearTimeout(autoHideT);
-    autoHideT = setTimeout(() => {
-      const busy = open || (els.stats && els.stats.classList.contains("is-open")) ||
-                   (els.kickoff && els.kickoff.classList.contains("is-open")) ||
-                   reviewQueue.length > 0;
-      if (!busy) setCollapsed(true);
-    }, 1800);
+    // Resolved. Give the store/celebration a beat, then get out of the way —
+    // tuckIfIdle re-checks goalBusy at fire time (Recap, a review, a milestone
+    // celebration all hold it open) and retries until the goal is truly idle.
+    tuckIfIdle(1800);
   }
 }
 
@@ -644,6 +666,45 @@ function onGoalPointerDown(e) {
   window.addEventListener("pointerup", up, { passive: true });
 }
 
+// ── The impatient puck ───────────────────────────────────────────────────────
+// If something has sat on the bench for over a week, the puck gives ONE small
+// rattle — the product nagging in its own physical language instead of a
+// notification. Hard limits, learned from the idle-dim mistake: once per day
+// across all tabs (storage marker), only in puck form, a few seconds after
+// load so it happens in your peripheral vision rather than during page-load
+// chaos, and silent (audio isn't unlocked pre-gesture anyway).
+const STALE_MS = 7 * 86400000;
+
+function maybeRattle() {
+  const now = Date.now();
+  const hasStale = thoughts.some(
+    (t) => (!t.snoozeUntil || t.snoozeUntil <= now) && now - (t.createdAt || now) > STALE_MS
+  );
+  if (!hasStale) return;
+  loadRattleDay().then((day) => {
+    if (day === todayKey()) return;
+    setTimeout(() => {
+      // Only in puck form: if the goal is already up (a review prompt, a live
+      // thought), the person is being nudged enough — and in that case the
+      // day's rattle is NOT spent, so it can still happen later when idle.
+      if (!collapsed || !els.puck) return;
+      saveRattleDay(todayKey()); // claimed only when it actually plays
+      restart(els.puck, "is-rattle");
+    }, 4000);
+  });
+}
+
+// The milestone banner — appears once, says its line, gets out of the way.
+let milestoneT = 0;
+function showMilestone(label) {
+  const b = shadow.querySelector("#kc-milestone");
+  if (!b) return;
+  b.textContent = label;
+  b.classList.add("is-shown");
+  clearTimeout(milestoneT);
+  milestoneT = setTimeout(() => b.classList.remove("is-shown"), 3400);
+}
+
 // Report an outcome on the menu item itself, where the click just happened —
 // no toast needed for something this local.
 function flashMenuLabel(btn, text) {
@@ -700,6 +761,47 @@ export function mergeBackup(current, currentFinished, raw) {
     .sort((a, b) => a - b)
     .slice(-400);
   return { thoughts: current.concat(incoming), finished, added: incoming.length };
+}
+
+// ── Milestones ───────────────────────────────────────────────────────────────
+// The game's own currency, spent deliberately: the 1st finish and the 100th
+// shouldn't feel identical. Two kinds — every 10th thought gone for good, and
+// the day a streak reaches 7. Pure function of (log before, log after) so it's
+// testable and can never double-fire.
+
+function streakOf(log, now = Date.now()) {
+  const DAY_ = 86400000;
+  const days = new Set(log.map((ts) => new Date(ts).toISOString().slice(0, 10)));
+  let s = 0;
+  for (let i = 0; ; i++) {
+    const key = new Date(now - i * DAY_).toISOString().slice(0, 10);
+    if (days.has(key)) s++;
+    else if (i > 0) break;
+  }
+  return s;
+}
+
+export function milestoneFor(logBefore, logAfter, now = Date.now()) {
+  // Streak first — rarer, so it wins the moment if both land at once.
+  const before = streakOf(logBefore, now);
+  const after = streakOf(logAfter, now);
+  if (before < 7 && after >= 7) {
+    return { kind: "streak", label: `${after}-day streak 🔥 — proper form.` };
+  }
+  const n = logAfter.length;
+  if (n > 0 && n % 10 === 0 && logBefore.length < n) {
+    return { kind: "count", label: `${n} gone for good — the bench fears you.` };
+  }
+  return null;
+}
+
+// What Recap shows as "coming up" — always something approaching.
+export function nextMilestone(log, now = Date.now()) {
+  const s = streakOf(log, now);
+  if (s > 0 && s < 7) return `${7 - s} more day${7 - s === 1 ? "" : "s"} to a 7-day streak`;
+  const n = log.length;
+  const gap = 10 - (n % 10);
+  return `${gap} more to ${n + gap} gone for good`;
 }
 
 // ── Tags ─────────────────────────────────────────────────────────────────────
@@ -804,12 +906,9 @@ function close() {
   els.tray.classList.remove("is-open");
   spheres.forEach((s) => s.el.remove());
   spheres = [];
-  // Done browsing and nothing live — the goal has no job, so it tucks away.
-  // Re-checked at fire time: retrieving a sphere closes the tray but ACTIVATES
-  // a thought, and that goal must stay up.
-  setTimeout(() => {
-    if (!open && !(api.isActive && api.isActive())) setCollapsed(true);
-  }, 600);
+  // Done browsing — tuck once the goal is truly idle (retrieving a sphere
+  // closes the tray but ACTIVATES a thought; goalBusy sees that at fire time).
+  tuckIfIdle(600);
 }
 
 // Keyboard control of the tray. Only active while the tray is open and you're
@@ -884,10 +983,13 @@ function addSphere(thought, start) {
   el.style.filter = `saturate(${(1 - 0.45 * stale).toFixed(2)}) brightness(${(1 - 0.18 * stale).toFixed(2)})`;
   const face = document.createElement("div");
   face.className = "kc-sphere-face";
-  const txt = (thought.text || "").slice(0, CONFIG.thoughtCap);
+  const whole = thought.text || "";
+  const txt = whole.length > CONFIG.thoughtCap
+    ? whole.slice(0, CONFIG.thoughtCap - 1).trimEnd() + "…"
+    : whole;
   face.textContent = txt;
   face.style.fontSize = labelFontSize(txt) * 0.72 + "px";
-  el.title = txt; // hover to read the full thought
+  el.title = whole.slice(0, 400); // hover to read (tooltips cap themselves anyway)
   el.appendChild(face);
   els.slots.appendChild(el);
   const sphere = {
@@ -1020,7 +1122,7 @@ function openThoughtCard(thought) {
 // editing "buy milk" to "#home buy milk" updates the chips.
 function commitEdit() {
   if (!cardThought) return;
-  const next = (els.tcText.textContent || "").trim().slice(0, 120);
+  const next = (els.tcText.textContent || "").trim().slice(0, 2000);
   if (!next) { els.tcText.textContent = cardThought.text || ""; return; }
   if (next === cardThought.text) return;
   cardThought.text = next;
